@@ -1,0 +1,26 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Combat — test de démarrage synthétique</title>
+<style>body{width:360px}#app,#app .shell{height:340px}#startup-result{white-space:pre-wrap;color:#9cd8b8;background:#17231f;padding:10px;font:12px monospace}</style>
+<div id="app"></div><pre id="startup-result">Vérification du démarrage synthétique…</pre>
+<script type="module">
+// Browser-only IPC fixture. No capture, game or user data access.
+const snapshot=await (await fetch('./ui-fixture.json')).json();
+const scenario=new URLSearchParams(location.search).get('scenario')??'fresh';
+localStorage.setItem('apm-compact','false');localStorage.setItem('apm-overview','false');
+localStorage.setItem('apm-layout',scenario==='cards'?'cards':'band');
+if(scenario==='remembered')localStorage.setItem('apm-combat-layout-applied','true');else localStorage.removeItem('apm-combat-layout-applied');
+const settings={opacity:.96,alwaysOnTop:true,width:620,height:600,x:10,y:20,preferredDevice:null,manualParty:null,compact:scenario!=='fresh'};
+const commands=[];window.isTauri=true;
+window.__TAURI_INTERNALS__={invoke:async(command,args)=>{
+ commands.push(command);
+ if(command==='dashboard')return {snapshot,settings:{...settings},partyMembers:snapshot.members.map(r=>({member:r.member,identityConfirmed:true})),observedPlayers:[],groupTimeline:[],rosterUpdates:1,persistenceError:null,dataDirectory:'Test synthétique',diagnostics:{mode:'replay',status:'TEST SYNTHÉTIQUE',error:null,npcap:false,administrator:false,devices:[],selectedDevice:null,connection:null,packets:0,parsed:0,duplicates:0,losses:0,recording:null,fixture:true}};
+ if(command==='compact_set'){settings.compact=args.compact;return;}
+ if(command==='window_geometry')return {x:10,y:20,width:620,height:600,scale:1};
+ if(command==='window_transform'){document.body.style.width=args.geometry.width+'px';document.querySelector('#app').style.height=args.geometry.height+'px';document.querySelector('.shell').style.height=args.geometry.height+'px';return;}
+ throw Error('Commande interdite dans le test de présentation : '+command);
+}};
+await import('../src/main.ts');
+await new Promise(resolve=>setTimeout(resolve,450));
+const expected=scenario==='fresh'?'combat':scenario==='cards'?'cards':'band';
+const passed=document.querySelector('.shell').dataset.layout===expected&&localStorage.getItem('apm-combat-layout-applied')==='true'&&settings.manualParty===null&&!commands.some(c=>/party_|capture_|new_combat|settings_save/.test(c))&&(scenario==='fresh'?commands.includes('compact_set')&&commands.includes('window_transform'):!commands.includes('compact_set')&&!commands.includes('window_transform'));
+document.querySelector('#startup-result').textContent=(passed?'PASS':'FAIL')+' — '+scenario+' → '+expected+' ; seules les commandes de présentation et lecture sont autorisées.';
+</script></html>

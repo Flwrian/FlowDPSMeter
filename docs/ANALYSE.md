@@ -1,5 +1,13 @@
 # Analyse et décisions techniques
 
+## Présentation Combat — 0.1.9
+
+Le composant `src/combat-meter.ts` consomme le même snapshot que les autres dispositions. Il conserve une ligne DOM par clé de membre, met à jour les textes et les largeurs de barres et trie une copie des lignes. Les symboles SVG sont originaux et les noms reçus sont insérés comme texte. Le taux des dégâts reçus utilise la durée commune avec un minimum d’une seconde ; les DPS/HPS sont repris du snapshot. Une identité non confirmée affiche des valeurs inconnues. Les anciens membres restent distingués ; aucune attribution ou composition n’est modifiée par l’affichage.
+
+Les barres expriment le montant relativement au meilleur membre de la statistique ; les pourcentages utilisent son total collectif. La transition de largeur dure 140 ms et respecte l’option Animations ainsi que la réduction des mouvements du système. Les valeurs numériques ne sont pas interpolées. Le filtre cible appelle la commande existante, avec les mêmes restrictions que la vue développée ; la carte ne simule ni vie de cible ni ping.
+
+Une préférence locale marque l’adoption du nouveau mode au premier démarrage, en conservant les choix existants Cartes/3 panneaux. Les commandes de compact et géométrie adaptent uniquement la présentation. La barre de titre garde les gestes natifs et ignore les boutons lors d’un déplacement. Les préférences de capture et de groupe ne sont pas réécrites par cette migration.
+
 ## Ce que JaMeter publie
 
 Le dépôt [JaMeter](https://github.com/jeojabon/JaMeter) contient un README et des images, pas le moteur de décodage. Le README annonce une capture passive Npcap, un overlay de DPS et contribution, des détails de compétences, des onglets de dégâts reçus et soins reçus ainsi que des fonctions de partage. Ces informations décrivent le produit ; elles ne permettent pas de connaître son langage, ses structures internes, ses opcodes ou ses formules exactes.

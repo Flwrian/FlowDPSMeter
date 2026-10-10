@@ -4,7 +4,7 @@ import { chart,groupTimeline,timelineChart } from './chart';
 import { renderStatsTable } from './stats-table';
 import type { Column } from './stats-table';
 import { transformGeometry } from './window-geometry';
-import {renderVisualLayout,readLayout,layouts,layoutSize} from './visual-layout';
+import {renderVisualLayout,readLayout,adoptCombat,layouts,layoutSize} from './visual-layout';
 import {ActivityTracker,captureFeedback} from './capture-feedback';
 import {partyStatus} from './party-status';
 import {readRefreshRate,pollInterval,pollDelay} from './live-options';
@@ -25,14 +25,16 @@ let viewedId:string|null=null;
 let imported=false;
 let busy=false;
 let refreshing:Promise<void>|null=null;
-let compact=localStorage.getItem('apm-compact')==='true';
+const storedLayout=localStorage.getItem('apm-layout');
+const upgradeLayout=adoptCombat(storedLayout,localStorage.getItem('apm-combat-layout-applied')==='true');
+let compact=!upgradeLayout&&localStorage.getItem('apm-compact')==='true';
 let overview=localStorage.getItem('apm-overview')==='true';
 let allSort:Column='damage',allDescending=true;
 let graphs=localStorage.getItem('apm-graphs')!=='false';
 let graphKey='';
 let partyAdding=false;
 let refreshRate=readRefreshRate(localStorage.getItem('apm-refresh-rate'));
-let layout=readLayout(localStorage.getItem('apm-layout'));
+let layout=upgradeLayout?'combat' as const:readLayout(storedLayout);
 const activity=new ActivityTracker();
 let motion=localStorage.getItem('apm-motion')!=='false';
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
@@ -47,15 +49,15 @@ const date=(timestamp:number|null):string=>timestamp===null?'':new Date(timestam
 const colors:Record<string,string>={'Gladiateur':'#edaf63','Templier':'#799cec','Rôdeur':'#74c982','Assassin':'#c495ef','Sorcier':'#ee858d','Clerc':'#efd47c','Spiritualiste':'#68cdcf','Aède':'#a1d6a0','Combattant':'#e99e78'};
 const icon=(type:string):string=>({damage:'↗',healing:'+',damageReceived:'◇'}[type]??'•');
 const root=document.querySelector<HTMLDivElement>('#app')!;
-root.innerHTML=`<main class="shell"><header title="Glisse cette barre pour déplacer la fenêtre"><div class="brand"><span class="logo"><i></i><i></i><i></i></span><div><strong>AionPartyMeter</strong><span>AION 2 · LE GROUPE ENTIER</span></div></div>
- <nav aria-label="Outils"><button data-action="compact" title="Mode compact" aria-label="Mode compact" aria-pressed="false">▤</button><button data-action="history" title="Historique" aria-label="Historique">◷</button><button data-action="settings" title="Réglages" aria-label="Réglages">⚙</button><button data-action="lock" title="Verrouiller — déverrouillage depuis l’icône près de l’horloge" aria-label="Verrouiller">⌑</button><button data-action="minimize" title="Réduire" aria-label="Réduire">−</button><button data-action="close" title="Fermer" aria-label="Fermer">×</button></nav></header>
+root.innerHTML=`<main class="shell"><header title="Glisse cette barre pour déplacer la fenêtre"><div class="brand"><span class="logo"><i></i><i></i><i></i></span><div><strong>AionPartyMeter</strong><span>AION 2 · LE GROUPE ENTIER</span></div></div><div class="combat-brand"><span id="combat-dot" class="status-dot"></span><strong id="combat-caption">En attente</strong><span id="combat-clock">00:00</span></div>
+ <nav aria-label="Outils"><button data-action="compact" title="Mode compact" aria-label="Mode compact" aria-pressed="false">▤</button><button data-action="history" title="Historique" aria-label="Historique">◷</button><button data-action="settings" title="Réglages" aria-label="Réglages">⚙</button><button class="combat-reset" data-action="reset" title="Terminer le combat et préparer le suivant" aria-label="Nouveau combat">↻</button><button data-action="lock" title="Verrouiller — déverrouillage depuis l’icône près de l’horloge" aria-label="Verrouiller">⌑</button><button data-action="minimize" title="Réduire" aria-label="Réduire">−</button><button data-action="close" title="Fermer" aria-label="Fermer">×</button></nav></header>
  <div id="connection" class="connection feedback"><button id="capture-feedback" data-action="diagnostics"><span class="status-dot"></span><span id="capture-label"></span></button><span id="packet-feedback" title="Activité des paquets observée par l’affichage"></span><span id="combat-feedback"></span><button id="partial-feedback" data-action="diagnostics" hidden>Données partielles</button><button id="capture-toggle" data-action="start">Démarrer</button></div><div id="party-context" class="party-context"><button data-action="party"><span id="party-context-label"></span><span class="party-context-add">Gérer +</span></button><select id="display-layout" aria-label="Affichage du meter"><option value="full">Développé</option>${layouts.map(([value,label])=>`<option value="${value}">${label}</option>`).join('')}</select><span id="compact-time"></span></div><div id="group"></div>
  <div class="tabs" role="tablist" aria-label="Statistiques"><button role="tab" data-metric="damage">↗ Dégâts</button><button role="tab" data-metric="healing">+ Soins</button><button role="tab" data-metric="damageReceived">◇ Dégâts reçus</button><button role="tab" data-action="overview">Toutes les stats</button></div>
  <div class="target-line"><span id="group-count"></span><select id="target" aria-label="Filtrer les dégâts par cible"></select></div>
  <section id="rows" class="rows" aria-label="Membres du groupe"></section>
  <section id="mini-meter" class="mini-meter" aria-label="Dégâts, soins et dégâts reçus du groupe" hidden></section>
  <section id="overview" hidden><div class="overview-tools"><span>Toutes les statistiques · durée commune</span><div><button data-action="graphs" aria-pressed="true">Masquer les graphiques</button><button data-action="enlarge">Agrandir la vue ↗</button></div></div><div id="all-table" class="table-scroll"></div><div id="group-graphs" class="group-graphs"></div><p class="graph-note">Courbes du groupe en intervalles de capture · survole une courbe pour les valeurs. Soins rapportés, overheal inconnu ; morts observées uniquement. Les avertissements de capture partielle s’appliquent aussi aux courbes.</p></section><div id="warnings"></div>
- <footer><span id="scope"></span><div><button data-action="party">Groupe</button><button data-action="reset" title="Terminer le combat et préparer le suivant">Nouveau combat</button><button data-action="diagnostics">Diagnostic</button><button data-action="import">Importer</button><button data-action="export">Exporter</button></div></footer>
+ <footer><span id="scope"></span><div class="footer-tools"><button data-action="party">Groupe</button><button data-action="reset" title="Terminer le combat et préparer le suivant">Nouveau combat</button><button data-action="diagnostics">Diagnostic</button><button data-action="import">Importer</button><button data-action="export">Exporter</button></div><div class="combat-footer"><button id="combat-player" data-action="party"></button><button id="combat-toggle" data-action="start" aria-label="Démarrer la capture">▶</button><button id="combat-capture" data-action="diagnostics"></button><button id="combat-roster" data-action="party"></button><span id="combat-data"></span><select id="combat-layout" aria-label="Affichage du meter compact"><option value="full">Développé</option>${layouts.map(([value,label])=>`<option value="${value}">${label}</option>`).join('')}</select></div></footer>
  <div id="panel"></div><div id="toast" role="status"></div><input type="file" id="file" accept=".json,.jsonl,.txt" hidden/>
  ${(['North','South','East','West','NorthEast','NorthWest','SouthEast','SouthWest'] as const).map(direction=>`<div class="resize-grip resize-${direction}" data-resize="${direction}" title="Glisse pour redimensionner la fenêtre"></div>`).join('')}</main>`;
 
@@ -74,6 +76,7 @@ function render():void {
  compact=dashboard?.settings.compact??compact;
  (root.querySelector('.shell') as HTMLElement).dataset.layout=compact?layout:'full';
  document.querySelector<HTMLSelectElement>('#display-layout')!.value=compact?layout:'full';
+ document.querySelector<HTMLSelectElement>('#combat-layout')!.value=compact?layout:'full';
  const layoutOption=document.querySelector<HTMLSelectElement>('#layout-option');if(layoutOption)layoutOption.value=layout;
  root.querySelector('.shell')!.classList.toggle('compact',compact);
  root.querySelector('.shell')!.classList.toggle('no-motion',!motion||reducedMotion.matches);
@@ -93,7 +96,8 @@ function render():void {
  patchText(document.querySelector('#party-context-label'),groupState);
  patchText(document.querySelector('#compact-time'),snapshot.startedAt?duration(snapshot.duration):'00:00');
  document.querySelector('#compact-time')!.setAttribute('title',snapshot.endReason??'Durée commune de combat');
- const feedback=captureFeedback(diag??null,snapshot,imported||viewedId?snapshot.members.map(r=>({member:r.member,identityConfirmed:r.identityConfirmed!==false})):members,dashboard?.rosterUpdates??0,activity.age(performance.now()),imported||!!viewedId);
+ const feedbackMembers=imported||viewedId?snapshot.members.map(r=>({member:r.member,identityConfirmed:r.identityConfirmed!==false})):members;
+ const feedback=captureFeedback(diag??null,snapshot,feedbackMembers,dashboard?.rosterUpdates??0,activity.age(performance.now()),imported||!!viewedId);
  const capture=document.querySelector<HTMLElement>('#capture-feedback')!;
  capture.dataset.tone=feedback.tone;capture.title=feedback.title;patchText(document.querySelector('#capture-label'),feedback.capture);
  const packets=document.querySelector<HTMLElement>('#packet-feedback')!;packets.classList.toggle('receiving',feedback.activity);packets.title=feedback.age;packets.setAttribute('aria-label',feedback.activity?'Nouveaux paquets reçus':feedback.age);
@@ -101,6 +105,15 @@ function render():void {
  const partial=document.querySelector<HTMLElement>('#partial-feedback')!;partial.hidden=!feedback.partial;patchText(partial,compact?'Partiel':'Données partielles');partial.title='Des pertes de capture ont été détectées : les statistiques peuvent être incomplètes. Ouvrir le diagnostic.';
  document.querySelector<HTMLElement>('.party-context>button')!.title=feedback.groupTitle;
  const captureToggle=document.querySelector<HTMLButtonElement>('#capture-toggle')!;captureToggle.dataset.action=diag?.mode==='live'?'stop':'start';captureToggle.disabled=!native||busy;patchText(captureToggle,diag?.mode==='live'?'Arrêter':'Démarrer');
+ const combatDot=document.querySelector<HTMLElement>('#combat-dot')!;combatDot.dataset.tone=feedback.tone;combatDot.title=feedback.title;
+ patchText(document.querySelector('#combat-caption'),snapshot.active?'Combat du groupe':snapshot.startedAt!==null?'Combat terminé':'En attente');
+ patchText(document.querySelector('#combat-clock'),snapshot.startedAt!==null?duration(snapshot.duration):'00:00');
+ document.querySelector<HTMLElement>('#combat-clock')!.title=snapshot.endReason??'Durée commune à tous les membres';
+ const self=document.querySelector<HTMLElement>('#combat-player')!;patchText(self,snapshot.members.find(r=>r.member.local)?.member.name??members.find(r=>r.member.local)?.member.name??'Groupe');self.title=feedback.groupTitle;
+ const combatCapture=document.querySelector<HTMLElement>('#combat-capture')!;combatCapture.dataset.tone=feedback.tone;patchText(combatCapture,feedback.tone==='error'?'À vérifier':feedback.capture==='Npcap absent'?'Npcap absent':!native?'Lecteur':imported||viewedId?'Rapport':diag?.mode==='replay'?'Replay':diag?.mode==='live'?(diag.connection?'Capture':'Recherche'):'Arrêtée');combatCapture.title=`${feedback.title}\n${feedback.age}`;
+ const compactToggle=document.querySelector<HTMLButtonElement>('#combat-toggle')!;compactToggle.dataset.action=captureToggle.dataset.action;compactToggle.disabled=captureToggle.disabled;compactToggle.title=diag?.mode==='live'?'Arrêter la capture':'Démarrer la capture';compactToggle.setAttribute('aria-label',compactToggle.title);patchText(compactToggle,diag?.mode==='live'?'■':'▶');
+ const roster=document.querySelector<HTMLElement>('#combat-roster')!;patchText(roster,`${feedbackMembers.filter(r=>r.identityConfirmed).length}/${feedbackMembers.length}`);roster.title=`${groupState}\n${feedback.groupTitle}`;
+ const data=document.querySelector<HTMLElement>('#combat-data')!;patchText(data,diag?.fixture?'TEST':feedback.partial?'PARTIEL':'');data.title=diag?.fixture?'Scénario synthétique : valeurs de test uniquement.':feedback.partial?'Pertes de capture : statistiques incomplètes.':'';
  const t=snapshot.totals;
  if(!compact)patchHtml(document.querySelector<HTMLElement>('#group')!,`<div class="encounter"><div><span class="eyebrow">${snapshot.active?'COMBAT EN COURS':snapshot.startedAt?'COMBAT TERMINÉ':'EN ATTENTE D’UN COMBAT'}</span><h1>${snapshot.selectedTarget!==null?escape(snapshot.targets.find(t=>t.id===snapshot.selectedTarget)?.name??'Cible sélectionnée'):'Statistiques du groupe'}</h1></div><div class="timer">${snapshot.startedAt?duration(snapshot.duration):'00:00'}<small>${escape(snapshot.endReason??'Durée commune')}</small></div></div>
  <div class="compact-summary"><span>${labels[metric]} · ${snapshot.members.filter(r=>r.member.present).length} membres</span><strong>${snapshot.startedAt?fmt(metric==='damage'?t.dps:metric==='healing'?t.hps:t.damageReceived/snapshot.duration):'—'}<small> / s</small></strong><span>${fmt(t[metric])} au total</span></div><div class="summary"><article class="primary"><span>DPS du groupe</span><strong>${snapshot.startedAt?fmt(t.dps):'—'}</strong><small>${fmt(t.damage)} dégâts</small></article><article><span>HPS du groupe</span><strong>${snapshot.startedAt?fmt(t.hps):'—'}</strong><small>${fmt(t.healing)} soins prodigués</small></article><article><span>Dégâts reçus</span><strong>${snapshot.startedAt?fmt(t.damageReceived):'—'}</strong><small>${t.deaths} mort${t.deaths>1?'s':''} observée${t.deaths>1?'s':''}</small></article></div>`);
@@ -114,7 +127,7 @@ function render():void {
  target.value=snapshot.selectedTarget===null?'':String(snapshot.selectedTarget);
  target.disabled=!native||!!viewedId||imported||!snapshot.active||(!showOverview&&metric!=='damage');
  const rows=document.querySelector('#rows')!;
- if(compact){renderVisualLayout(document.querySelector<HTMLElement>('#mini-meter')!,snapshot,metric,motion&&!reducedMotion.matches,layout);}
+ if(compact){renderVisualLayout(document.querySelector<HTMLElement>('#mini-meter')!,snapshot,metric,motion&&!reducedMotion.matches,layout);const compactTarget=document.querySelector<HTMLSelectElement>('#combat-target');if(compactTarget)compactTarget.disabled=target.disabled;}
  else if(showOverview){renderOverview();}
  else if(!snapshot.members.length){
   rows.innerHTML=`<div class="empty"><div class="empty-symbol">${icon(metric)}</div><h2>Ton personnage et tes coéquipiers.</h2><p>${native?'Démarre la capture et combats. Le meter fonctionne aussi en solo. Pour suivre ton groupe, ouvre Groupe et ajoute les coéquipiers découverts ou leur pseudo exact.':'La capture réseau fonctionne dans l’application Windows. Tu peux aussi importer un rapport JSON local ici.'}</p><button class="wide" data-action="party">Choisir les membres du groupe</button></div>`;
@@ -133,7 +146,7 @@ function render():void {
  }
  patchHtml(document.querySelector<HTMLElement>('#warnings')!,warnings.length?`<details class="warnings"><summary>⚠ ${warnings.length} information(s) sur les données</summary>${warnings.map(w=>`<p>${escape(w)}</p>`).join('')}</details>`:'');
  document.querySelector('#scope')!.textContent=metric==='healing'?'Soins rapportés · overheal inconnu':snapshot.startedAt?'Local · aucune donnée envoyée':'Npcap · capture passive';
- document.querySelector<HTMLButtonElement>('[data-action="reset"]')!.disabled=!native||imported||!!viewedId;
+ document.querySelectorAll<HTMLButtonElement>('[data-action="reset"]').forEach(button=>button.disabled=!native||imported||!!viewedId);
  renderPanel();
 }
 
@@ -220,7 +233,7 @@ function renderPanel():void {
   content=`<p class="muted">Le meter fonctionne aussi en solo. Tes coéquipiers n’ont rien à installer. Pour le groupe, choisis ceux à suivre ici ; une liste réseau reconnue les sélectionne automatiquement en mode Auto.</p><div class="party-mode-actions"><button data-action="auto-party" ${!native?'disabled':''}>Auto</button><button data-action="solo-party" ${!native?'disabled':''}>Solo</button><strong id="party-current-status"></strong></div><h3>Membres suivis maintenant</h3><div id="party-followed"></div><h3>Ajouter un coéquipier</h3><div id="party-discoveries" class="actions discoveries"></div><label>Pseudo exact<div class="quick-add"><input id="party-quick-name" placeholder="Viktor" maxlength="40"/><button class="primary-button" data-action="quick-party" ${!native?'disabled':''}>Ajouter</button></div></label><p class="muted">Les joueurs proches peuvent être découverts sans faire partie de ton groupe. Ajoute seulement tes coéquipiers. Les identités non reçues restent « — » : combats ensemble, ramassez du butin ou rapproche-toi du membre pour recevoir son identité. Tu n’as pas besoin de quitter et recréer le groupe.</p><details class="party-advanced"><summary>Composition complète et diagnostic</summary><p id="party-mode" class="muted"></p><label>Un pseudo par ligne<textarea id="party-names" rows="4">${escape(names.join('\n'))}</textarea></label><button class="wide" data-action="save-party" ${!native?'disabled':''}>Appliquer</button><p class="muted">La sélection est mémorisée. Une identité seule ne prouve pas l’appartenance au groupe. Retirer un membre conserve sa participation passée au combat, mais exclut ses prochains événements. En mode Auto, une liste réseau reconnue sélectionne les membres. Si la liste ou une identité manque, la sélection explicite reste disponible.</p></details>`;
 
  }else if(panel==='settings'){
-  content=`<label class="check"><input id="compact-option" type="checkbox" ${compact?'checked':''}/> Mode compact — dégâts, soins et reçus ensemble</label><label>Affichage compact<select id="layout-option">${layouts.map(([value,label])=>`<option value="${value}" ${layout===value?'selected':''}>${label}</option>`).join('')}</select></label><label>Actualisation des statistiques<select id="refresh-rate">${([4,10,20] as const).map(hz=>`<option value="${hz}" ${refreshRate===hz?'selected':''}>${hz} fois / seconde${hz===10?' · recommandé':hz===20?' · plus de CPU':' · économique'}</option>`).join('')}</select></label><label class="check"><input id="motion-option" type="checkbox" ${motion?'checked':''}/> Animations discrètes</label><p class="muted">Actualisation selon les événements reçus. Les détails de compétences sont limités à 4 mises à jour/s ; la fenêtre masquée à 1/s. Les animations respectent la réduction des mouvements de Windows.</p><div class="actions"><button data-action="import">Importer</button><button data-action="export">Exporter</button><button data-action="reset">Nouveau combat</button><button data-action="diagnostics">Diagnostic</button></div><p class="muted">Déplace la fenêtre en glissant sa barre de titre. Redimensionne-la par les bords ou la poignée en bas à droite. La position et la taille sont mémorisées.</p><button class="wide" data-action="recenter" ${!native?'disabled':''}>Recentrer la fenêtre et rétablir sa taille</button><label>Opacité de l’overlay <input id="opacity" type="range" min="25" max="100" value="${Math.round((dashboard?.settings.opacity??.96)*100)}"/></label><label class="check"><input id="always-top" type="checkbox" ${dashboard?.settings.alwaysOnTop??true?'checked':''}/> Toujours au-dessus du jeu</label><label>Interface réseau<select id="device"><option value="">Détection automatique</option>${dashboard?.diagnostics.devices.map(d=>`<option ${dashboard?.settings.preferredDevice===d?'selected':''}>${escape(d)}</option>`).join('')??''}</select></label><button class="wide primary-button" data-action="save-settings" ${!native?'disabled':''}>Enregistrer les réglages</button><p class="muted">Le verrouillage laisse passer les clics vers le jeu. Pour déverrouiller : icône AionPartyMeter près de l’horloge → Afficher et déverrouiller.</p><hr/><p class="muted">Interface française · fonctionnement local · capture passive Npcap.<br/>AionPartyMeter 0.1.8 · moteur dérivé d’A2Tools, GPL-3.0.</p>`;
+  content=`<label class="check"><input id="compact-option" type="checkbox" ${compact?'checked':''}/> Mode compact — Combat, Bandeau, Cartes ou 3 panneaux</label><label>Affichage compact<select id="layout-option">${layouts.map(([value,label])=>`<option value="${value}" ${layout===value?'selected':''}>${label}</option>`).join('')}</select></label><label>Actualisation des statistiques<select id="refresh-rate">${([4,10,20] as const).map(hz=>`<option value="${hz}" ${refreshRate===hz?'selected':''}>${hz} fois / seconde${hz===10?' · recommandé':hz===20?' · plus de CPU':' · économique'}</option>`).join('')}</select></label><label class="check"><input id="motion-option" type="checkbox" ${motion?'checked':''}/> Animations discrètes</label><p class="muted">Actualisation selon les événements reçus. Les détails de compétences sont limités à 4 mises à jour/s ; la fenêtre masquée à 1/s. Les animations respectent la réduction des mouvements de Windows.</p><div class="actions"><button data-action="import">Importer</button><button data-action="export">Exporter</button><button data-action="reset">Nouveau combat</button><button data-action="diagnostics">Diagnostic</button></div><p class="muted">Déplace la fenêtre en glissant sa barre de titre. Redimensionne-la par les bords ou la poignée en bas à droite. La position et la taille sont mémorisées.</p><button class="wide" data-action="recenter" ${!native?'disabled':''}>Recentrer la fenêtre et rétablir sa taille</button><label>Opacité de l’overlay <input id="opacity" type="range" min="25" max="100" value="${Math.round((dashboard?.settings.opacity??.96)*100)}"/></label><label class="check"><input id="always-top" type="checkbox" ${dashboard?.settings.alwaysOnTop??true?'checked':''}/> Toujours au-dessus du jeu</label><label>Interface réseau<select id="device"><option value="">Détection automatique</option>${dashboard?.diagnostics.devices.map(d=>`<option ${dashboard?.settings.preferredDevice===d?'selected':''}>${escape(d)}</option>`).join('')??''}</select></label><button class="wide primary-button" data-action="save-settings" ${!native?'disabled':''}>Enregistrer les réglages</button><p class="muted">Le verrouillage laisse passer les clics vers le jeu. Pour déverrouiller : icône AionPartyMeter près de l’horloge → Afficher et déverrouiller.</p><hr/><p class="muted">Interface française · fonctionnement local · capture passive Npcap.<br/>AionPartyMeter 0.1.9 · moteur dérivé d’A2Tools, GPL-3.0.</p>`;
  }else if(panel==='export'){
   content=`<p class="muted">${snapshot.members.length} membres · ${duration(snapshot.duration)} · données locales</p><div class="actions"><button data-format="json">Rapport JSON complet</button><button data-format="csv">Tableau CSV</button></div>`;
  }else{
@@ -350,11 +363,11 @@ root.addEventListener('click',event=>{
 });
 root.addEventListener('change',event=>{
  const element=event.target as HTMLInputElement;
- if(element.id==='display-layout'||element.id==='layout-option')void chooseLayout(element.value).catch(e=>toast(String(e),true));
+ if(element.id==='display-layout'||element.id==='layout-option'||element.id==='combat-layout')void chooseLayout(element.value).catch(e=>toast(String(e),true));
  if(element.id==='compact-option')void (element.checked?chooseLayout(layout):setCompact(false)).catch(e=>toast(String(e),true));
  if(element.id==='refresh-rate'){refreshRate=readRefreshRate(element.value);localStorage.setItem('apm-refresh-rate',String(refreshRate));}
  if(element.id==='motion-option'){motion=element.checked;localStorage.setItem('apm-motion',String(motion));render();}
- if(element.id==='target')void invoke('select_target',{target:element.value?Number(element.value):null}).then(()=>refresh(true)).catch(e=>toast(String(e),true));
+ if(element.id==='target'||element.id==='combat-target')void invoke('select_target',{target:element.value?Number(element.value):null}).then(()=>refresh(true)).catch(e=>toast(String(e),true));
  if(element.id==='file'){
   const file=element.files?.[0];if(!file)return;
   void(async()=>{
@@ -386,8 +399,8 @@ async function refresh(force=false):Promise<void>{
 
 if(native){
  installWindowGestures();
- void(async()=>{for(;;){const start=performance.now();try{await refresh();}catch(e){toast(`Application : ${e}`,true);}await new Promise(resolve=>setTimeout(resolve,pollDelay(pollInterval(refreshRate,document.hidden,selectedMember!==null),performance.now()-start)));}})();
-}
+ void(async()=>{if(upgradeLayout){try{await chooseLayout('combat');localStorage.setItem('apm-combat-layout-applied','true');}catch(e){toast(`Affichage : ${e}`,true);}}else localStorage.setItem('apm-combat-layout-applied','true');for(;;){const start=performance.now();try{await refresh();}catch(e){toast(`Application : ${e}`,true);}await new Promise(resolve=>setTimeout(resolve,pollDelay(pollInterval(refreshRate,document.hidden,selectedMember!==null),performance.now()-start)));}})();
+}else if(upgradeLayout){void chooseLayout('combat').then(()=>localStorage.setItem('apm-combat-layout-applied','true'));}else localStorage.setItem('apm-combat-layout-applied','true');
 render();
 
 // Coalesce pointer updates and retain the final position even when IPC completes
@@ -406,7 +419,7 @@ function installWindowGestures():void {
  const schedule=(g:Gesture):void=>{if(g.scheduled||g.running)return;g.scheduled=true;requestAnimationFrame(()=>{g.scheduled=false;if(gesture===g)apply(g);});};
  const attach=(element:HTMLElement,mode:string):void=>{
   element.addEventListener('pointerdown',event=>{
-   if(event.button!==0||(mode==='Move'&&(event.target as HTMLElement).closest('nav')))return;
+   if(event.button!==0||(mode==='Move'&&(event.target as HTMLElement).closest('button,select,input')))return;
    event.preventDefault();element.setPointerCapture(event.pointerId);
    const g:Gesture={mode,x:event.screenX,y:event.screenY,latestX:event.screenX,latestY:event.screenY,appliedX:event.screenX,appliedY:event.screenY,geometry:null,running:false,scheduled:false,done:false};
    gesture=g;void invoke<Geometry>('window_geometry').then(value=>{g.geometry=value;schedule(g);}).catch(e=>{gesture=null;toast(String(e),true);});

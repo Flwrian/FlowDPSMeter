@@ -1,5 +1,18 @@
 # Démarrer AionPartyMeter
 
+## Nouvel affichage Combat — 0.1.9
+
+Fermer le meter depuis son icône près de l’horloge → Quitter, extraire tout le pack **0.1.9**, puis ouvrir **DEMARRER.exe**. Le groupe en jeu peut rester formé. Réglages, captures et historique sont conservés. La mise à jour automatique utilise les releases stables publiées sur GitHub ; un brouillon n’est pas proposé au téléchargement.
+
+- **Combat** reprend la disposition de la référence : fond sombre, barres colorées par classe, pseudo, total en petit, taux/s en gras et contribution à droite. Format initial **360 × 230** pour quatre membres ; les grands groupes défilent. Une barre remplie représente le meilleur montant du classement, tandis que le pourcentage représente la part du total collectif.
+- Cliquer **Dégâts**, **Soins** ou **Reçus** pour changer le classement. Les soins restent ceux rapportés par le protocole, avec overheal inconnu. Cliquer un membre ouvre ses compétences et ses graphiques.
+- La cible en haut filtre les dégâts pendant le combat. **Toutes les cibles** restaure le total. Les soins et dégâts reçus restent ceux du groupe. Le total affiché est celui observé par le meter ; la vie du boss et le ping ne sont pas disponibles dans cette vue.
+- La barre du bas ouvre **Groupe** depuis le pseudo ou le compteur d’identités confirmées ; cliquer l’état de capture ouvre le diagnostic. Le bouton **▶ / ■** démarre ou arrête la capture. Les identités en attente affichent **—** et **?** ; **↪** marque les anciens membres conservés dans le combat. **PARTIEL** signale les pertes détectées ; **TEST** signale les données synthétiques.
+- Le sélecteur en bas à droite permet de retrouver **Bandeau**, **Cartes**, **3 panneaux** ou **Développé**. Dans Développé, **Toutes les stats** ouvre le tableau complet et les trois courbes du groupe. Les trois statistiques restent simultanément visibles dans les autres dispositions compactes.
+- Glisser le titre pour déplacer la fenêtre ; tirer les bords pour la redimensionner. Réglages d’opacité, maintien au-dessus du jeu et verrouillage traversant les clics restent accessibles depuis les icônes du titre. Pour déverrouiller, utiliser l’icône près de l’horloge → **Afficher et déverrouiller**.
+
+Le mode Combat est adopté une fois au premier lancement de cette version si tu utilisais le Bandeau ou l’affichage par défaut. Un choix existant Cartes ou 3 panneaux est conservé. Ensuite, ton choix de disposition est respecté. Cette refonte ne modifie pas la capture, les calculs ou la découverte du groupe.
+
 ## Installation du pack
 
 1. **Extraire tout le ZIP** avec « Extraire tout… ». Ne pas lancer l’application depuis l’intérieur du ZIP et ne pas déplacer l’exécutable seul.
@@ -66,7 +79,7 @@ Si une fenêtre disparaît après un changement d’écran, l’ancienne positio
 
 ## Contenu
 
-`DEMARRER.exe` est le lanceur ; `AionPartyMeter.exe` est l’overlay ; `vcruntime140.dll` et `vcruntime140_1.dll` sont les dépendances Visual C++ ; `dependances` contient l’installateur WebView2 ; `exemples` contient les données synthétiques ; `licences` contient les notices. Les sources sont distribuées séparément dans `AionPartyMeter-0.1.8-Sources.zip`.
+`DEMARRER.exe` est le lanceur ; `AionPartyMeter.exe` est l’overlay ; `vcruntime140.dll` et `vcruntime140_1.dll` sont les dépendances Visual C++ ; `dependances` contient l’installateur WebView2 ; `exemples` contient les données synthétiques ; `licences` contient les notices. Les sources sont distribuées séparément dans `AionPartyMeter-0.1.9-Sources.zip`.
 
 Microsoft documente [la distribution de WebView2](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution) et [la distribution des DLL Visual C++](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files).
 

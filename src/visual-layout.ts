@@ -1,13 +1,16 @@
 import type {Metric,Row,Snapshot} from './types';
 import {renderCompact,metricCell,memberRate} from './compact-meter';
 import {patchText} from './view-dom';
+import {renderCombat} from './combat-meter';
 
-export type Layout='band'|'cards'|'panels';
-export const layouts=[['band','Bandeau'],['cards','Cartes'],['panels','3 panneaux']] as const;
-export function readLayout(value:string|null):Layout {return value==='cards'||value==='panels'?value:'band';}
+export type Layout='combat'|'band'|'cards'|'panels';
+export const layouts=[['combat','Combat'],['band','Bandeau'],['cards','Cartes'],['panels','3 panneaux']] as const;
+export function readLayout(value:string|null):Layout {return value==='cards'||value==='panels'||value==='band'?value:'combat';}
+export function adoptCombat(value:string|null,applied:boolean):boolean {return !applied&&value!=='cards'&&value!=='panels';}
 export function layoutSize(layout:Layout,members:number):{width:number;height:number} {
  const count=Math.max(0,members);
- return layout==='cards'?{width:460,height:Math.min(620,Math.max(260,160+Math.ceil(count/2)*82))}
+ return layout==='combat'?{width:360,height:Math.min(560,Math.max(230,120+count*27))}
+  :layout==='cards'?{width:460,height:Math.min(620,Math.max(260,160+Math.ceil(count/2)*82))}
   :layout==='panels'?{width:780,height:Math.min(620,Math.max(260,200+count*36))}
   :{width:400,height:Math.min(450,Math.max(200,160+count*24))};
 }
@@ -19,9 +22,10 @@ export function metricRows(rows:Row[],kind:Metric):Row[] {
  });
 }
 export function renderVisualLayout(container:HTMLElement,snapshot:Snapshot,metric:Metric,motion:boolean,layout:Layout):void {
- const structure=layout==='panels'?'panels':'compact';
+ const structure=layout==='combat'?'combat':layout==='panels'?'panels':'compact';
  if(container.dataset.structure!==structure){container.replaceChildren();container.dataset.structure=structure;}
  container.dataset.layout=layout;
+ if(layout==='combat'){renderCombat(container,snapshot,metric,motion,metricRows(snapshot.members,metric));return;}
  if(layout!=='panels'){
   renderCompact(container,snapshot,metric,motion);
   patchText(container.querySelector('.mini-head>span'),layout==='cards'?'Trier':'Membre');

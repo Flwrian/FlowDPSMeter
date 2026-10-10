@@ -4,7 +4,7 @@ Application Windows x64 en français pour les statistiques du **groupe entier** 
 
 ## Lancer
 
-1. Extraire tout `AionPartyMeter-0.1.8-Windows-x64.zip`, puis ouvrir **DEMARRER.exe**. Le lanceur vérifie les nouvelles versions stables sur GitHub, puis les dépendances. Les DLL Visual C++ requises et l’installateur WebView2 hors ligne sont fournis ; aucun outil de développement n’est nécessaire. Lire `LIRE-MOI.html` dans le pack ou `docs/INSTALLATION.md`.
+1. Extraire tout `AionPartyMeter-0.1.9-Windows-x64.zip`, puis ouvrir **DEMARRER.exe**. Le lanceur vérifie les nouvelles versions stables sur GitHub, puis les dépendances. Les DLL Visual C++ requises et l’installateur WebView2 hors ligne sont fournis ; aucun outil de développement n’est nécessaire. Lire `LIRE-MOI.html` dans le pack ou `docs/INSTALLATION.md`.
 2. Installer [Npcap](https://npcap.com/#download) si le diagnostic le signale absent. Le chargement prend en charge son dossier standard `System32\Npcap` et le mode compatible WinPcap. Le pilote n’est pas embarqué ni installé automatiquement.
 3. Cliquer **Démarrer**. Si Npcap refuse l’accès, fermer l’application et la lancer en administrateur.
 4. Ouvrir **Groupe** : la liste des joueurs découverts est actualisée en direct. Cliquer **+ Ajouter** sur un coéquipier ou saisir son pseudo exact, sans quitter le groupe. Si la liste réseau est décodée, les membres sont ajoutés automatiquement. Une identité non encore reçue reste signalée, même sans dégâts.
@@ -29,7 +29,7 @@ La capture ne démarre pas automatiquement et aucun paquet n’est envoyé au je
 
 ## Overlay et historique
 
-Le bouton **▤** ou Réglages → **Mode compact** garde le temps de combat, les totaux collectifs et trois colonnes simultanées par membre : dégâts, soins et dégâts reçus (total et taux/s). Il mémorise ce mode et permet de revenir à la taille complète. Taille minimale : 320 × 180 en compact, 420 × 420 sinon. Déplacer la fenêtre par son titre ; redimensionner par ses bords. Opacité, interface réseau et maintien au-dessus du jeu sont réglables. Le verrouillage laisse les clics traverser : **icône AionPartyMeter près de l’horloge → Afficher et déverrouiller** pour retrouver les contrôles.
+Le bouton **▤** ou Réglages → **Mode compact** garde le temps de combat et les totaux collectifs. **Combat** affiche un classement coloré par classe avec total, taux/s et contribution ; les onglets passent des dégâts aux soins ou aux dégâts reçus. **Bandeau**, **Cartes** et **3 panneaux** permettent d’afficher les trois statistiques ensemble. Le choix est mémorisé et permet de revenir à la taille complète. Taille minimale : 320 × 180 en compact, 420 × 420 sinon. Déplacer la fenêtre par son titre ; redimensionner par ses bords. Opacité, interface réseau et maintien au-dessus du jeu sont réglables. Le verrouillage laisse les clics traverser : **icône AionPartyMeter près de l’horloge → Afficher et déverrouiller** pour retrouver les contrôles.
 
 L’historique conserve les 200 derniers combats dans le dossier local de l’application. Le diagnostic permet d’ouvrir ce dossier. Les exports JSON comprennent compétences et courbes ; les CSV donnent un tableau par membre. Les sauvegardes sont atomiques. Un historique illisible est conservé sans écrasement et une erreur est affichée.
 
@@ -72,6 +72,10 @@ Inspiration fonctionnelle : [jeojabon/JaMeter](https://github.com/jeojabon/JaMet
 Sélecteur **Affichage du meter** dans la barre du groupe : Bandeau (pseudo et trois totaux), Cartes (classe, totaux et taux), 3 panneaux (classement indépendant par statistique), Développé (onglets, tableau complet et graphiques). Détails et courbes au clic. Le choix est mémorisé localement ; le changement conserve la position de fenêtre et adapte sa taille.
 
 La barre d’état distingue capture active, recherche du jeu, replay et rapport historique, avec activité des paquets, état du combat et pertes détectées. Survoler la capture ou le groupe pour les compteurs, la connexion et les identités confirmées/en attente ; cliquer pour le diagnostic. Aucun changement au moteur automatique, aux règles de groupe, à la capture ou au calcul des statistiques.
+
+## Version 0.1.9 — affichage Combat
+
+**Combat** reprend la référence fournie : fenêtre sombre, barres par classe, total, DPS/HPS et contribution par membre. Format de départ 360 × 230 pour quatre membres. Onglets Dégâts / Soins / Reçus, détails et courbes au clic, filtre cible et état de capture en bas. Le nouveau mode est adopté au premier lancement ; un choix explicite Cartes ou 3 panneaux est conservé. Les choix suivants restent mémorisés. Le moteur et la détection automatique ne changent pas. La vie de la cible et le ping ne sont pas exposés par le snapshot : aucune valeur n’est inventée.
 
 ## Version 0.1.8 — mises à jour GitHub
 
