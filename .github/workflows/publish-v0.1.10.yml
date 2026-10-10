@@ -23,6 +23,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
+          trap {
+              $message = $_.Exception.Message.Replace($env:GH_TOKEN, '[redacted]').Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Host "::error::$message"
+              exit 1
+          }
           # This job publishes only the already built version explicitly requested.
           # It never creates tags, rebuilds files or changes published assets.
           $version = '0.1.10'
@@ -44,7 +49,12 @@ jobs:
           $jobs = Invoke-RestMethod "$api/actions/runs/$buildRunId/jobs" -Headers $headers
           $draftSteps = @($jobs.jobs.steps | Where-Object { $_.name -eq 'Prepare draft release' -and $_.conclusion -eq 'success' })
           if ($draftSteps.Count -ne 1) { throw 'Draft asset upload and digest verification did not succeed.' }
-          $release = Invoke-RestMethod "$api/releases/tags/$tag" -Headers $headers
+          # A draft is visible in the authenticated list, but not reliably in
+          # the endpoint for a published release by tag.
+          $releases = @(Invoke-RestMethod "$api/releases?per_page=100" -Headers $headers)
+          $matches = @($releases | Where-Object tag_name -eq $tag)
+          if ($matches.Count -ne 1) { throw 'Missing or duplicate release draft.' }
+          $release = $matches[0]
           if ($release.tag_name -ne $tag -or $release.prerelease) { throw 'Unexpected release.' }
           $expected = @('Windows-x64', 'Update-Windows-x64', 'Sources') | ForEach-Object { "AionPartyMeter-$version-$_.zip" }
           if (@($release.assets).Count -ne $expected.Count) { throw 'Unexpected release asset count.' }
