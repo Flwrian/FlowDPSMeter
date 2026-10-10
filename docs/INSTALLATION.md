@@ -1,5 +1,15 @@
 # Démarrer AionPartyMeter
 
+## Dégâts, soins et tank ensemble — 0.1.10
+
+Quitter l’ancien meter depuis son icône près de l’horloge, extraire tout le pack **0.1.10**, puis ouvrir **DEMARRER.exe**. Le groupe en jeu peut rester formé. Les réglages, captures et historique sont conservés.
+
+Dans le sélecteur d’affichage (en bas à droite de Combat, ou dans la barre du groupe), choisir **Combat +**. Cette variante conserve le style de Combat et affiche **Dégâts**, **Soins** et **Tank** sur chaque ligne. **Tank désigne les dégâts reçus observés** : ce montant ne mesure pas l’aggro, les dégâts bloqués ou les dégâts évités. Les soins restent rapportés par le protocole, avec overheal inconnu.
+
+Chaque cellule montre le **total en gras** et le **taux par seconde en petit**. Le résumé Groupe affiche les trois totaux et taux simultanément. Cliquer Dégâts, Soins ou Tank change le classement et la longueur des barres, en conservant les trois colonnes. Le survol donne les montants exacts et la contribution de chaque statistique. Les membres sans dégâts restent visibles ; une identité en attente affiche — dans ses six valeurs. Les anciens membres gardent leur participation.
+
+Cliquer une ligne pour les détails et courbes de la statistique choisie. Le filtre cible agit sur les dégâts ; soins et tank restent ceux du groupe. Taille initiale **400 × 280** pour quatre membres, redimensionnable jusqu’à 320 pixels de large. Glisser le titre pour déplacer la fenêtre ; verrouillage et opacité restent accessibles. Les dispositions précédentes restent disponibles et le choix est mémorisé. Aucun changement de découverte automatique ou de capture n’est nécessaire.
+
 ## Nouvel affichage Combat — 0.1.9
 
 Fermer le meter depuis son icône près de l’horloge → Quitter, extraire tout le pack **0.1.9**, puis ouvrir **DEMARRER.exe**. Le groupe en jeu peut rester formé. Réglages, captures et historique sont conservés. La mise à jour automatique utilise les releases stables publiées sur GitHub ; un brouillon n’est pas proposé au téléchargement.
@@ -79,7 +89,7 @@ Si une fenêtre disparaît après un changement d’écran, l’ancienne positio
 
 ## Contenu
 
-`DEMARRER.exe` est le lanceur ; `AionPartyMeter.exe` est l’overlay ; `vcruntime140.dll` et `vcruntime140_1.dll` sont les dépendances Visual C++ ; `dependances` contient l’installateur WebView2 ; `exemples` contient les données synthétiques ; `licences` contient les notices. Les sources sont distribuées séparément dans `AionPartyMeter-0.1.9-Sources.zip`.
+`DEMARRER.exe` est le lanceur ; `AionPartyMeter.exe` est l’overlay ; `vcruntime140.dll` et `vcruntime140_1.dll` sont les dépendances Visual C++ ; `dependances` contient l’installateur WebView2 ; `exemples` contient les données synthétiques ; `licences` contient les notices. Les sources sont distribuées séparément dans `AionPartyMeter-0.1.10-Sources.zip`.
 
 Microsoft documente [la distribution de WebView2](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution) et [la distribution des DLL Visual C++](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files).
 

@@ -49,11 +49,12 @@ test('layout preference validates stored values; sizes are bounded for large gro
  assert.deepEqual(layout.layoutSize('band',4),{width:400,height:256});assert.deepEqual(layout.layoutSize('cards',4),{width:460,height:324});assert.deepEqual(layout.layoutSize('panels',4),{width:780,height:344});
  assert.equal(layout.layoutSize('cards',100).height,620);assert.equal(layout.layoutSize('band',0).height,200);
  assert.deepEqual(layout.layoutSize('combat',4),{width:360,height:230});assert.equal(layout.layoutSize('combat',100).height,560);
+ assert.equal(layout.readLayout('combat-all'),'combat-all');assert.deepEqual(layout.layoutSize('combat-all',4),{width:400,height:280});assert.equal(layout.layoutSize('combat-all',100).height,560);
 });
 test('Combat is adopted once; explicit alternative layouts and later choices survive',()=>{
  assert.equal(layout.adoptCombat(null,false),true);assert.equal(layout.adoptCombat('band',false),true);
- for(const value of ['cards','panels'])assert.equal(layout.adoptCombat(value,false),false);
- for(const value of [null,'band','cards','panels','combat'])assert.equal(layout.adoptCombat(value,true),false);
+ for(const value of ['cards','panels','combat-all'])assert.equal(layout.adoptCombat(value,false),false);
+ for(const value of [null,'band','cards','panels','combat','combat-all'])assert.equal(layout.adoptCombat(value,true),false);
 });
 test('Combat reads shared duration and totals without changing attribution or unknown identities',()=>{
  const row={identityConfirmed:true,totals:{damage:100,healing:60,damageReceived:50,dps:10,hps:6}};

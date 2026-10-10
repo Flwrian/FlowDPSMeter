@@ -4,7 +4,7 @@ Application Windows x64 en français pour les statistiques du **groupe entier** 
 
 ## Lancer
 
-1. Extraire tout `AionPartyMeter-0.1.9-Windows-x64.zip`, puis ouvrir **DEMARRER.exe**. Le lanceur vérifie les nouvelles versions stables sur GitHub, puis les dépendances. Les DLL Visual C++ requises et l’installateur WebView2 hors ligne sont fournis ; aucun outil de développement n’est nécessaire. Lire `LIRE-MOI.html` dans le pack ou `docs/INSTALLATION.md`.
+1. Extraire tout `AionPartyMeter-0.1.10-Windows-x64.zip`, puis ouvrir **DEMARRER.exe**. Le lanceur vérifie les nouvelles versions stables sur GitHub, puis les dépendances. Les DLL Visual C++ requises et l’installateur WebView2 hors ligne sont fournis ; aucun outil de développement n’est nécessaire. Lire `LIRE-MOI.html` dans le pack ou `docs/INSTALLATION.md`.
 2. Installer [Npcap](https://npcap.com/#download) si le diagnostic le signale absent. Le chargement prend en charge son dossier standard `System32\Npcap` et le mode compatible WinPcap. Le pilote n’est pas embarqué ni installé automatiquement.
 3. Cliquer **Démarrer**. Si Npcap refuse l’accès, fermer l’application et la lancer en administrateur.
 4. Ouvrir **Groupe** : la liste des joueurs découverts est actualisée en direct. Cliquer **+ Ajouter** sur un coéquipier ou saisir son pseudo exact, sans quitter le groupe. Si la liste réseau est décodée, les membres sont ajoutés automatiquement. Une identité non encore reçue reste signalée, même sans dégâts.
@@ -72,6 +72,10 @@ Inspiration fonctionnelle : [jeojabon/JaMeter](https://github.com/jeojabon/JaMet
 Sélecteur **Affichage du meter** dans la barre du groupe : Bandeau (pseudo et trois totaux), Cartes (classe, totaux et taux), 3 panneaux (classement indépendant par statistique), Développé (onglets, tableau complet et graphiques). Détails et courbes au clic. Le choix est mémorisé localement ; le changement conserve la position de fenêtre et adapte sa taille.
 
 La barre d’état distingue capture active, recherche du jeu, replay et rapport historique, avec activité des paquets, état du combat et pertes détectées. Survoler la capture ou le groupe pour les compteurs, la connexion et les identités confirmées/en attente ; cliquer pour le diagnostic. Aucun changement au moteur automatique, aux règles de groupe, à la capture ou au calcul des statistiques.
+
+## Version 0.1.10 — Combat +, trois statistiques ensemble
+
+Choisir **Combat +** dans le sélecteur d’affichage. Même style sombre et barres par classe que Combat, avec trois colonnes permanentes par membre : **Dégâts**, **Soins** et **Tank** (dégâts reçus observés). Chaque colonne affiche le total et le taux/s ; le résumé du groupe affiche les trois totaux et taux simultanément. Cliquer un titre de colonne trie les lignes et ajuste les barres sans masquer les autres statistiques. Les contributions précises restent au survol. Format initial 400 × 280 pour quatre membres, largeur minimale 320 pixels, détails et graphiques au clic. Le choix est mémorisé. Capture, calculs et détection automatique restent inchangés.
 
 ## Version 0.1.9 — affichage Combat
 

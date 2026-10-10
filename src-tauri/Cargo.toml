@@ -1,6 +1,6 @@
 [package]
 name = "aion-party-meter"
-version = "0.1.9"
+version = "0.1.10"
 description = "AionPartyMeter - statistiques du groupe entier pour Aion 2"
 authors = ["AionPartyMeter contributors", "taengu (upstream parser)"]
 license = "GPL-3.0-only"

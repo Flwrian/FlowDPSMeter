@@ -40,6 +40,7 @@ window.__TAURI_INTERNALS__={invoke:async(command,args)=>{
 await import('../src/main.ts');
 const result=document.querySelector('#ui-result');const passed=[];
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const settle=async predicate=>{const deadline=performance.now()+2500;while(!predicate()&&performance.now()<deadline)await wait(25);};
 const check=(value,label)=>{if(!value)throw Error(label);passed.push('✓ '+label);};
 try{
  await wait(350);
@@ -192,6 +193,28 @@ try{
  check(document.querySelector('#mini-meter').scrollWidth<=document.querySelector('#mini-meter').clientWidth&&document.querySelector('footer').scrollWidth<=document.querySelector('footer').clientWidth,'Combat : fenêtre et barre d’état tiennent à 320 pixels');
  check(!state.commands.slice(combatBaseline).some(c=>/party_|capture_|new_combat|settings_save/.test(c)),'Combat : changer de vue ou de statistique ne modifie pas la capture et le groupe');
  document.body.style.width='360px';document.querySelector('[data-compact-sort="damage"]').click();await wait(100);
+ const combinedBaseline=state.commands.length;
+ await choose('combat-all');
+ check(document.querySelectorAll('.combat-row').length===4&&[...document.querySelectorAll('.combat-row')].every(row=>row.querySelectorAll('.combat-stat').length===3),'Combat + : dégâts, soins et tank sur chaque ligne');
+ check([...document.querySelectorAll('.combat-all-summary .combat-stat')].every(cell=>cell.querySelector('strong').textContent!=='—'&&cell.querySelector('small').textContent.includes('/s')),'Combat + : trois totaux collectifs et taux simultanés');
+ const combinedHealer=document.querySelector('.combat-row[data-member="party:300"]')??[...document.querySelectorAll('.combat-row')].find(row=>row.textContent.includes('Lumière'));
+ check(combinedHealer.querySelector('.damage strong').textContent==='0'&&combinedHealer.querySelector('.healing strong').textContent!=='0'&&combinedHealer.querySelector('.healing small').textContent.includes('/s'),'Combat + : soins et HPS du soigneur sans dégâts visibles ensemble');
+ check(document.querySelector('.combat-row[data-member="party:100"] .damageReceived strong').textContent!=='0'&&document.querySelector('.combat-all-head [data-compact-sort="damageReceived"]').title.includes('dégâts reçus'),'Combat + : Tank signifie dégâts reçus observés');
+ document.querySelector('.combat-all-head [data-compact-sort="healing"]').click();await wait(100);
+ check(document.querySelector('.combat-row').textContent.includes('Lumière')&&[...document.querySelectorAll('.combat-row')].every(row=>row.querySelectorAll('.combat-stat').length===3),'Combat + : trier les soins conserve les trois statistiques');
+ const combinedFocus=document.querySelector('.combat-row');combinedFocus.focus();state.bump=200;await wait(300);
+ check(document.activeElement===combinedFocus&&document.querySelector('.combat-row')===combinedFocus,'Combat + : lignes et focus stables pendant les nouveaux événements');state.bump=0;
+ combinedFocus.click();await wait(350);
+ check(document.querySelector('[data-detail-metric="healing"]').classList.contains('selected')&&!!document.querySelector('.sheet .chart svg'),'Combat + : détails et courbes de soins accessibles');document.querySelector('[data-action="dismiss"]').click();
+ state.unknown=true;await settle(()=>document.querySelector('.combat-row[data-member="unknown"]'));
+ check([...document.querySelectorAll('.combat-row[data-member="unknown"] .combat-stat strong,.combat-row[data-member="unknown"] .combat-stat small')].length===6&&[...document.querySelectorAll('.combat-row[data-member="unknown"] .combat-stat strong,.combat-row[data-member="unknown"] .combat-stat small')].every(el=>el.textContent==='—'),'Combat + : six valeurs inconnues, sans faux zéro');state.unknown=false;await settle(()=>!document.querySelector('.combat-row[data-member="unknown"]'));
+ state.settings.manualParty=['Aster','Sève'];await settle(()=>document.querySelector('.combat-row[data-member="party:300"].departed'));
+ check(document.querySelectorAll('.combat-row').length===4&&document.querySelector('.combat-row.departed').textContent.includes('Lumière'),'Combat + : participation de l’ancien membre conservée');state.settings.manualParty=null;await settle(()=>!document.querySelector('.combat-row.departed'));
+ check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat + : quatre membres visibles à 400 × 280');
+ document.body.style.width='320px';
+ check(document.querySelector('#mini-meter').scrollWidth<=document.querySelector('#mini-meter').clientWidth&&[...document.querySelectorAll('.combat-row')].every(row=>row.scrollWidth<=row.clientWidth),'Combat + : trois colonnes sans débordement à 320 pixels');
+ check(localStorage.getItem('apm-layout')==='combat-all'&&!state.commands.slice(combinedBaseline).some(command=>/party_|capture_|new_combat|settings_save/.test(command)),'Combat + : préférence mémorisée sans modifier le moteur');
+ document.body.style.width='400px';document.querySelector('.combat-all-head [data-compact-sort="damage"]').click();await wait(100);
  window.uiTest={state,choose,passed};
  result.textContent=passed.join('\n')+'\nPASS — test UI synthétique, pas une preuve en jeu';
 }catch(error){result.textContent=passed.join('\n')+'\nFAIL: '+error.message;console.error(error);}

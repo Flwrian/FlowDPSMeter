@@ -1,5 +1,11 @@
 # Analyse et décisions techniques
 
+## Combat + — 0.1.10
+
+La variante `combat-all` réutilise le composant Combat et sa palette de classes. Les trois cellules par membre lisent `combatValues` pour les totaux, DPS/HPS, taux des dégâts reçus et contributions ; les valeurs restent affichées lors d’un changement de tri. Les barres suivent le montant de la colonne choisie, relativement au meilleur membre confirmé. Le résumé collectif reprend les trois montants du même snapshot et la durée commune. Les identités non confirmées gardent six valeurs inconnues.
+
+Le changement de structure Combat/Combat + reconstruit le conteneur une fois ; les actualisations suivantes conservent les clés DOM et le focus. L’option est mémorisée dans la préférence de disposition existante. La commande de filtre cible et ses restrictions de rapport restent identiques ; dans Combat +, le filtre reste disponible même lorsque le classement suit les soins ou les dégâts reçus, puisque les dégâts restent visibles. Aucun événement, calcul moteur ou mécanisme d’attribution n’est modifié.
+
 ## Présentation Combat — 0.1.9
 
 Le composant `src/combat-meter.ts` consomme le même snapshot que les autres dispositions. Il conserve une ligne DOM par clé de membre, met à jour les textes et les largeurs de barres et trie une copie des lignes. Les symboles SVG sont originaux et les noms reçus sont insérés comme texte. Le taux des dégâts reçus utilise la durée commune avec un minimum d’une seconde ; les DPS/HPS sont repris du snapshot. Une identité non confirmée affiche des valeurs inconnues. Les anciens membres restent distingués ; aucune attribution ou composition n’est modifiée par l’affichage.

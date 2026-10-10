@@ -108,3 +108,12 @@ Les sources sont publiées dans Flwrian/FlowDPSMeter. Le workflow de release pr�
 - **93 fichiers Rust de production et tests identiques par SHA256** à leur état avant les changements de présentation. La capture, le décodeur, la découverte automatique et les calculs sont inchangés. Le lanceur/updater est repris sans modification de la version 0.1.8, précédemment validée par 33 contrôles.
 
 Les aperçus utilisent des données synthétiques, marquées TEST dans la barre d’état. La capture Npcap réelle et les gestes de fenêtre dans le jeu ne sont pas prouvés par les tests navigateur. La vie du boss et le ping ne sont pas exposés dans le snapshot, et aucune jauge ou valeur correspondante n’est simulée. Aucun nouveau combat réel n’a été exécuté pour cette refonte.
+
+## Version 0.1.10 — Combat +
+
+- **26 tests JavaScript réussis**, avec vérification du nouveau choix mémorisé, de sa taille bornée et de sa conservation lors de la migration. TypeScript strict et build Vite de production réussis.
+- **83 contrôles UI synthétiques réussis** : les 71 précédents, plus trois cellules par membre, totaux et taux collectifs simultanés, soigneur sans dégâts, définition Tank/dégâts reçus, tri sans masquer les autres valeurs, stabilité des lignes/focus pendant un événement, détails/courbes, six valeurs inconnues, ancien membre conservé, quatre membres visibles à 400 × 280, largeur 320 px sans débordement et préférence mémorisée sans commande de groupe/capture/combat.
+- **93 fichiers Rust inchangés par SHA256**. Capture, décodeur, attribution et découverte automatique restent identiques. Le lanceur et l’updater sont également repris sans modification.
+- Compilation release Windows x64 avec custom-protocol réussie en 0.1.10 ; l’interface est embarquée dans le binaire.
+
+Les aperçus sont issus du scénario marqué TEST. Aucun nouveau combat réel ou geste natif pendant le jeu n’est revendiqué. Tank affiche les dégâts reçus, sans prétendre mesurer l’aggro ou la mitigation.
