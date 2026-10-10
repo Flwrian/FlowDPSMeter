@@ -62,8 +62,13 @@ jobs:
               $assets = @($release.assets | Where-Object name -eq $name)
               if ($assets.Count -ne 1) { throw "Missing or duplicate archive: $name" }
               $asset = $assets[0]
-              if ($asset.state -ne 'uploaded' -or $asset.size -le 0 -or $asset.digest -cnotmatch '^sha256:[a-f0-9]{64}$' -or $asset.browser_download_url -ne "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$name") {
-                  throw "Archive verification failed: $name"
+              if ($asset.state -ne 'uploaded' -or $asset.size -le 0 -or $asset.digest -cnotmatch '^sha256:[a-f0-9]{64}$') {
+                  throw "Archive verification failed: $name (state=$($asset.state), size=$($asset.size), digest=$($asset.digest))"
+              }
+              # GitHub drafts may expose an untagged URL until publication.
+              $prefix = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/"
+              if (!$asset.browser_download_url.StartsWith($prefix) -or !$asset.browser_download_url.EndsWith("/$name")) {
+                  throw "Unexpected draft download URL: $($asset.browser_download_url)"
               }
               Write-Host "$name : $($asset.size) bytes, $($asset.digest)"
           }
@@ -83,4 +88,8 @@ jobs:
           if ($published.draft -or $published.prerelease -or $published.tag_name -ne $tag -or !$published.published_at) { throw 'Publication was not confirmed.' }
           $latest = Invoke-RestMethod "$api/releases/latest" -Headers $headers
           if ($latest.id -ne $published.id) { throw 'Published version is not the latest release.' }
+          foreach ($name in $expected) {
+              $asset = @($latest.assets | Where-Object name -eq $name)[0]
+              if ($asset.browser_download_url -ne "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$name") { throw "Unexpected published download URL: $name" }
+          }
           Write-Host "Published latest release: $($published.html_url)"
