@@ -117,3 +117,23 @@ Les aperçus utilisent des données synthétiques, marquées TEST dans la barre 
 - Compilation release Windows x64 avec custom-protocol réussie en 0.1.10 ; l’interface est embarquée dans le binaire.
 
 Les aperçus sont issus du scénario marqué TEST. Aucun nouveau combat réel ou geste natif pendant le jeu n’est revendiqué. Tank affiche les dégâts reçus, sans prétendre mesurer l’aggro ou la mitigation.
+
+## Version 0.1.11 — interface adaptative
+
+- 26 tests JavaScript réussis, TypeScript strict et Vite production réussis.
+- 122 contrôles d'interface synthétiques : 83 régressions de groupe, statistiques, tableaux, courbes et layouts ; 39 contrôles de commandes et disposition de 320 à 1120 pixels. Les tailles recommandées conservent quatre membres visibles dans Combat et Combat +. Les autres membres restent accessibles au défilement.
+- Démarrer/Arrêter présent dans toutes les vues, état d'attente, blocage des doubles actions, restauration après erreur, saisie préservée, ajout par Entrée, tabulation dans les panneaux et retour du focus par Échap vérifiés avec l'adaptateur de test. Aucune capture réelle n'est démarrée par ces tests.
+- Résumé collectif actualisé sans reconstruction de ses cartes DOM. Rafraîchissement et traitement des événements inchangés ; aucune amélioration chiffrée de consommation CPU n'est revendiquée.
+- 93 fichiers Rust identiques par SHA256. Capture, reconstruction, décodage, découverte automatique et attribution inchangés. Lanceur/updater inchangés.
+- Compilation release Windows x64 custom-protocol réussie en version 0.1.11, avec interface embarquée.
+
+Les aperçus sont marqués TEST et utilisent des statistiques synthétiques. La refonte ne constitue pas une nouvelle validation en jeu ou une preuve de gestes natifs avec Aion lancé.
+## Version 0.1.12 — dégâts totaux plus lisibles
+
+- 26 tests JavaScript réussis et compilation TypeScript/Vite réussie.
+- 124 contrôles d’interface synthétiques réussis : 85 contrôles du groupe et des statistiques, dont les totaux précis du joueur et du groupe séparés du DPS ; 39 contrôles des commandes et petites fenêtres.
+- Quatre membres visibles en Combat à 360 × 292 et en Combat + à 400 × 340 ; absence de débordement horizontal à 320 pixels. Soigneur sans dégâts, valeurs inconnues et anciens membres conservés.
+- Total prioritaire dans Combat, Combat + et la vue développée ; format précis sous un million, format court à deux décimales au-delà, montant exact au survol.
+- Les 93 fichiers Rust correspondent aux empreintes avant refonte : aucune modification de capture ou détection.
+- Publication limitée à v0.1.12 depuis le workflow de compilation existant, avec ses permissions déjà présentes : trois archives locales comparées aux empreintes SHA-256 et tailles des fichiers GitHub avant publication stable.
+- Ces vérifications sont synthétiques et locales ; aucune nouvelle preuve en combat réel ou mesure comparative de CPU.

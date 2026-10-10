@@ -1,0 +1,72 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Refonte 0.1.12 — TEST synthétique</title>
+<style>body{width:400px}#app,.shell{height:322px}#redesign-result{white-space:pre-wrap;background:#14271e;color:#b8dec8;padding:10px;font:12px monospace}</style>
+<div id="app"></div><pre id="redesign-result">Contrôles responsive en cours…</pre>
+<script type="module">
+// No network capture or user data. Native calls are replaced only in this test page.
+const {groupTimeline}=await import('../src/chart.ts');
+const fixture=await (await fetch('./ui-fixture.json')).json();
+const query=new URLSearchParams(location.search);
+const settings={compact:true,opacity:.96,alwaysOnTop:true,width:400,height:322,x:0,y:0,preferredDevice:null,manualParty:null};
+const state={mode:'stopped',connection:null,pending:null,error:null,commands:[],unknown:false};
+localStorage.setItem('apm-layout','combat-all');localStorage.setItem('apm-combat-layout-applied','true');localStorage.setItem('apm-refresh-rate','10');localStorage.setItem('apm-overview','false');
+window.isTauri=true;
+window.__TAURI_INTERNALS__={invoke:async(command,args)=>{
+ state.commands.push(command);
+ if(command==='dashboard'){
+  const snapshot=structuredClone(fixture);
+  if(state.unknown)snapshot.members.push({member:{key:'unknown',name:'CoéquipierAuPseudoTrèsLong',class:'',present:true,local:false},identityConfirmed:false,totals:{damage:0,healing:0,healingReceived:0,damageReceived:0,deaths:0,dps:0,hps:0},contribution:0,skills:[],timeline:[]});
+  const members=snapshot.members.filter(r=>r.member.present).map(row=>({member:row.member,identityConfirmed:row.identityConfirmed!==false}));
+  if(settings.manualParty)members.push({member:{key:'late',name:settings.manualParty.at(-1),class:'',local:false,present:true},identityConfirmed:false});
+  return {snapshot,settings:{...settings},partyMembers:members,observedPlayers:['Aster','Lumière','Sève'],rosterUpdates:1,groupTimeline:args.overview?groupTimeline(snapshot.members):[],persistenceError:null,dataDirectory:'TEST synthétique',diagnostics:{mode:state.mode,status:'TEST SYNTHÉTIQUE',error:state.error,npcap:true,administrator:false,devices:[],selectedDevice:null,connection:state.connection,packets:0,parsed:0,duplicates:0,losses:0,recording:null,fixture:true}};
+ }
+ if(command==='capture_start'||command==='capture_stop'){await new Promise(resolve=>state.pending=resolve);if(state.failCapture)throw Error('Erreur de test volontaire');state.mode=command==='capture_start'?'live':'stopped';state.connection=state.mode==='live'?'TEST-FLUX':null;return;}
+ if(command==='window_geometry')return {x:0,y:0,width:400,height:322,scale:1};
+ if(command==='window_transform'){size(args.geometry.width,args.geometry.height);return;}
+ if(command==='compact_set'){settings.compact=args.compact;return;}
+ if(command==='window_action')return;
+ if(command==='party_add'){settings.manualParty=['Aster','Lumière','Sève',args.name];return;}
+ throw Error('Commande non prévue : '+command);
+}};
+function size(width,height){document.body.style.width=width+'px';document.querySelector('#app').style.height=height+'px';const shell=document.querySelector('.shell');if(shell)shell.style.height=height+'px';}
+await import('../src/main.ts');
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const settle=async predicate=>{const limit=performance.now()+2500;while(!predicate()&&performance.now()<limit)await wait(20);if(!predicate())throw Error('Attente UI expirée');};
+const passed=[];const check=(ok,label)=>{if(!ok)throw Error(label);passed.push('✓ '+label);};
+const visible=el=>!!el&&el.getClientRects().length>0;
+const choose=async layout=>{const select=document.querySelector('#display-layout');select.value=layout;select.dispatchEvent(new Event('change',{bubbles:true}));await settle(()=>document.querySelector('.shell').dataset.layout===layout);await wait(100);};
+try{
+ await wait(350);
+ const button=document.querySelector('#capture-toggle');
+ for(const [layout,width,height] of [['combat',320,288],['combat-all',320,322],['band',320,280],['cards',320,360],['panels',780,344],['full',420,420],['full',620,600],['full',1120,780]]){
+  await choose(layout);size(width,height);await wait(140);
+  const shell=document.querySelector('.shell');
+  check(shell.scrollWidth<=shell.clientWidth+1,`${layout} : pas de débordement horizontal à ${width} × ${height}`);
+  check(visible(button)&&button.getBoundingClientRect().right<=shell.getBoundingClientRect().right,`${layout} : commande de capture visible`);
+  check(visible(document.querySelector('.party-context>button')),`${layout} : groupe accessible`);
+ }
+ const summary=document.querySelector('#summary-dps');await wait(350);check(summary===document.querySelector('#summary-dps'),'Résumé collectif conservé dans le DOM pendant les actualisations');
+ await choose('combat-all');size(400,322);
+ button.click();await settle(()=>state.pending);
+ check(button.disabled&&button.textContent==='Démarrage…'&&button.getAttribute('aria-busy')==='true','Démarrage : état visible et bouton désactivé');
+ button.click();document.querySelector('#combat-toggle').click();
+ check(state.commands.filter(c=>c==='capture_start').length===1,'Double démarrage bloqué, y compris entre deux commandes');
+ state.pending();await settle(()=>button.textContent==='Arrêter'&&!button.disabled);
+ check(button.dataset.state==='live'&&document.querySelector('#capture-label').textContent==='Capture active','Capture active distinguée de l’attente');
+ state.pending=null;button.click();await settle(()=>state.pending);check(button.disabled&&button.textContent==='Arrêt…','Arrêt : commande temporairement bloquée');state.pending();await settle(()=>!button.disabled&&button.textContent==='Démarrer');
+ state.pending=null;state.failCapture=true;button.click();await settle(()=>state.pending);state.pending();await settle(()=>!button.disabled);check(button.textContent==='Démarrer'&&document.querySelector('#toast').textContent.includes('Erreur de test'),'Erreur : commande restaurée, retour visible');state.failCapture=false;
+ state.unknown=true;await settle(()=>document.querySelector('[data-member="unknown"]'));
+ check([...document.querySelectorAll('[data-member="unknown"] .combat-stat strong')].every(el=>el.textContent==='—'),'Valeurs manquantes conservées sans faux zéro');
+ size(320,322);document.querySelector('.party-context>button').click();await wait(100);
+ const sheet=document.querySelector('.sheet');check(sheet.getBoundingClientRect().bottom<=document.querySelector('.shell').getBoundingClientRect().bottom,'Panneau Groupe contenu dans la petite fenêtre');
+ check(sheet.scrollWidth<=sheet.clientWidth,'Groupe : pas de débordement avec pseudo long');
+ const input=document.querySelector('#party-quick-name');input.value='Viktor';input.focus();await wait(350);check(document.activeElement===input&&input.value==='Viktor','Saisie conservée pendant le rafraîchissement');
+ input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));await settle(()=>settings.manualParty?.includes('Viktor')&&document.querySelector('#party-followed').textContent.includes('Viktor'));check(document.querySelector('#party-followed').textContent.includes('Viktor'),'Ajout par Entrée via la commande existante');
+ const close=document.querySelector('.sheet-head button');close.focus();close.dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true}));check(document.activeElement===document.querySelector('.party-advanced summary'),'Tabulation retenue dans le panneau');
+ document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));check(!document.querySelector('.sheet')&&document.activeElement===document.querySelector('.party-context>button'),'Échap ferme et rend le focus à Groupe');
+ document.querySelector('[data-action="settings"]').click();await wait(100);check(document.querySelector('.sheet').scrollWidth<=document.querySelector('.sheet').clientWidth,'Réglages sur une colonne à 320 px');document.querySelector('[data-action="dismiss"]').click();
+ check(!state.commands.some(c=>['party_save','new_combat','settings_save'].includes(c)),'La refonte ne réinitialise ni groupe, ni combat, ni réglages réseau');
+ state.unknown=false;settings.manualParty=null;await choose(query.get('layout')??'combat-all');size(Number(query.get('width')??400),Number(query.get('height')??322));
+ if(query.get('view'))document.querySelector(`[data-action="${query.get('view')}"]`).click();
+ document.querySelector('#redesign-result').textContent=passed.join('\n')+'\nPASS — TEST synthétique ; aucune capture réelle';
+}catch(error){document.querySelector('#redesign-result').textContent=passed.join('\n')+'\nFAIL : '+error.message;console.error(error);}
+</script></html>

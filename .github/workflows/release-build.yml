@@ -53,3 +53,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./packaging/windows/publish-draft.ps1
+      # Publication explicitly requested for this version only. Future tags
+      # still stop at a draft, and no additional token permissions are granted.
+      - name: Publish requested v0.1.12 release
+        if: github.repository == 'Flwrian/FlowDPSMeter' && github.ref == 'refs/tags/v0.1.12'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./packaging/windows/publish-v0.1.12.ps1

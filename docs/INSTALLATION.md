@@ -179,3 +179,22 @@ Cette version modifie uniquement la présentation et les préférences d’affic
 Le fichier `update.json` situé à côté de DEMARRER.exe contient `repository: "Flwrian/FlowDPSMeter"` et `enabled: true`. Pour les modifier dans une fenêtre, exécuter `DEMARRER.exe --updates`. `DEMARRER.exe --skip-update` ignore la vérification une seule fois. Le résultat est journalisé dans `%LOCALAPPDATA%\AionPartyMeter\update-last-result.txt`.
 
 Télécharger le ZIP **Windows-x64** pour une première installation. Le ZIP **Update-Windows-x64** est destiné au lanceur et ne contient pas l’installateur WebView2. Les sources seules ou une release brouillon/préversion ne déclenchent pas l’installation automatique. Aucun compte utilisateur, token GitHub ou donnée de combat n’est envoyé par le lanceur ; il contacte GitHub pour la version et les fichiers de la release.
+
+## Interface 0.1.11 — commandes visibles et fenêtres adaptatives
+
+Fermer l'ancien meter, extraire tout le pack 0.1.11 et ouvrir DEMARRER.exe. Le groupe en jeu peut rester formé. Les données et la composition suivie sont conservées.
+
+**Démarrer / Arrêter** reste visible dans toutes les présentations. Pendant l'opération, le bouton indique Démarrage… ou Arrêt… et bloque les doubles clics. Une erreur restaure la commande et affiche un message. En compact, le point à côté du bouton ouvre le diagnostic ; son survol indique l'état de capture.
+
+**Groupe** indique le nombre d'identités connues sur le nombre de membres suivis. Ouvrir ce bouton pour vérifier les noms et le mode Auto/Solo. Ajouter par pseudo exact puis Entrée, ou cliquer un joueur découvert. Les joueurs proches ne sont pas automatiquement ajoutés par cette interface.
+
+Le choix de présentation est dans la même barre. Combat + conserve les dégâts, soins et dégâts reçus ensemble. Les tailles recommandées pour quatre membres sont 360 × 292 pour Combat et 400 × 340 pour Combat + ; les bords permettent toujours de redimensionner. Une petite fenêtre fait défiler les membres et les panneaux plutôt que de couper les commandes. Les noms longs sont raccourcis à l'écran, avec leur nom complet disponible au survol.
+
+Réglages distingue Affichage, Fenêtre et Capture. Les préférences d'affichage sont immédiates ; utiliser Enregistrer fenêtre et réseau pour l'opacité, Toujours au-dessus et l'interface réseau. Échap ferme les panneaux et rend le focus à leur bouton d'ouverture ; Tab reste dans le panneau ouvert.
+
+Capture, détection automatique, attribution des invocations et calcul des statistiques sont identiques à la version 0.1.10. Tank signifie toujours dégâts reçus observés.
+## Version 0.1.12 — lire les totaux
+
+Dans Combat, le nombre principal à droite est le total observé ; le DPS ou HPS apparaît en dessous. Dans Combat +, chaque membre conserve ses trois colonnes : total des dégâts, total des soins et total des dégâts reçus (Tank). Le résumé Total groupe suit la même présentation. Les valeurs sous un million sont affichées précisément ; au-delà, passe la souris pour lire le montant exact.
+
+Pour installer, extraire tout le pack Windows 0.1.12 et ouvrir DEMARRER.exe. Pour une installation précédente, ouvrir son DEMARRER.exe et accepter la mise à jour proposée. Fermer le meter lorsque le lanceur le demande ; le groupe en jeu peut rester formé. Historique et réglages sont conservés.

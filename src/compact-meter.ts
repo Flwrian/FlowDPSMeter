@@ -1,5 +1,6 @@
 import type {Metric,Snapshot,Row} from './types';
 import {patchText} from './view-dom';
+import {meterTotal} from './combat-meter';
 
 const format=new Intl.NumberFormat('fr-FR',{notation:'compact',maximumFractionDigits:1});
 const exact=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
@@ -11,7 +12,7 @@ const kinds=['damage','healing','damageReceived'] as const;
 export function metricCell(element:HTMLElement,amount:number,rate:number,known:boolean,combat:string,motion:boolean):void {
  const value=element.querySelector('strong')!;
  const previous=amounts.get(value);
- patchText(value,known?format.format(amount):'—');patchText(element.querySelector('small'),known?`${format.format(rate)} / s`:'En attente');
+ patchText(value,known?meterTotal(amount):'—');patchText(element.querySelector('small'),known?`${format.format(rate)} / s`:'En attente');
  element.title=known?`${exact.format(amount)} au total · ${exact.format(rate)} / s`:'Identité non reçue : valeur inconnue';
  if(motion&&known&&previous?.combat===combat&&amount>previous.value){
   animations.get(value)?.cancel();animations.set(value,value.animate([{backgroundColor:'#ffffff18'},{backgroundColor:'transparent'}],{duration:180,easing:'ease-out'}));

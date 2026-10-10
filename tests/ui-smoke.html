@@ -176,7 +176,7 @@ try{
  check(document.querySelectorAll('.combat-row').length===4&&document.querySelectorAll('.combat-class svg').length===4,'Combat : tous les membres avec leurs symboles de classe');
  check(document.querySelector('.combat-row').textContent.includes('Aster')&&document.querySelector('.combat-row .combat-share').textContent.endsWith('%'),'Combat : dégâts, DPS et contribution alignés, tri par dégâts');
  check(document.querySelector('#combat-data').textContent==='TEST'&&document.querySelector('#combat-capture').textContent==='Replay'&&document.querySelector('#combat-roster').textContent==='4/4','Combat : replay synthétique et identités réelles clairement signalés');
- check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat : les quatre membres visibles à 360 × 230');
+ check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat : les quatre membres visibles à 360 × 292');
  const combatRow=document.querySelector('.combat-row');combatRow.focus();state.bump=100;await wait(350);
  check(document.querySelector('.combat-row')===combatRow&&document.activeElement===combatRow,'Combat : lignes et focus préservés pendant les mises à jour');state.bump=0;
  document.querySelector('[data-compact-sort="healing"]').click();await wait(120);
@@ -196,9 +196,11 @@ try{
  const combinedBaseline=state.commands.length;
  await choose('combat-all');
  check(document.querySelectorAll('.combat-row').length===4&&[...document.querySelectorAll('.combat-row')].every(row=>row.querySelectorAll('.combat-stat').length===3),'Combat + : dégâts, soins et tank sur chaque ligne');
- check([...document.querySelectorAll('.combat-all-summary .combat-stat')].every(cell=>cell.querySelector('strong').textContent!=='—'&&cell.querySelector('small').textContent.includes('/s')),'Combat + : trois totaux collectifs et taux simultanés');
+ check([...document.querySelectorAll('.combat-all-summary .combat-stat')].every(cell=>cell.querySelector('strong').textContent!=='—'&&/DPS|HPS|\/s/.test(cell.querySelector('small').textContent)),'Combat + : trois totaux collectifs et taux simultanés');
+ check(document.querySelector('.combat-row[data-member="party:200"] .damage strong').textContent.replace(/\s/g,'')==='619950','Combat + : total de dégâts précis, sans arrondi en milliers');
+ check(document.querySelector('.combat-all-summary .damage strong').textContent.replace(/\s/g,'')==='803190'&&document.querySelector('.combat-all-summary .damage small').textContent.includes('DPS'),'Combat + : total du groupe distinct du DPS');
  const combinedHealer=document.querySelector('.combat-row[data-member="party:300"]')??[...document.querySelectorAll('.combat-row')].find(row=>row.textContent.includes('Lumière'));
- check(combinedHealer.querySelector('.damage strong').textContent==='0'&&combinedHealer.querySelector('.healing strong').textContent!=='0'&&combinedHealer.querySelector('.healing small').textContent.includes('/s'),'Combat + : soins et HPS du soigneur sans dégâts visibles ensemble');
+ check(combinedHealer.querySelector('.damage strong').textContent==='0'&&combinedHealer.querySelector('.healing strong').textContent!=='0'&&combinedHealer.querySelector('.healing small').textContent.includes('HPS'),'Combat + : soins et HPS du soigneur sans dégâts visibles ensemble');
  check(document.querySelector('.combat-row[data-member="party:100"] .damageReceived strong').textContent!=='0'&&document.querySelector('.combat-all-head [data-compact-sort="damageReceived"]').title.includes('dégâts reçus'),'Combat + : Tank signifie dégâts reçus observés');
  document.querySelector('.combat-all-head [data-compact-sort="healing"]').click();await wait(100);
  check(document.querySelector('.combat-row').textContent.includes('Lumière')&&[...document.querySelectorAll('.combat-row')].every(row=>row.querySelectorAll('.combat-stat').length===3),'Combat + : trier les soins conserve les trois statistiques');
@@ -210,7 +212,7 @@ try{
  check([...document.querySelectorAll('.combat-row[data-member="unknown"] .combat-stat strong,.combat-row[data-member="unknown"] .combat-stat small')].length===6&&[...document.querySelectorAll('.combat-row[data-member="unknown"] .combat-stat strong,.combat-row[data-member="unknown"] .combat-stat small')].every(el=>el.textContent==='—'),'Combat + : six valeurs inconnues, sans faux zéro');state.unknown=false;await settle(()=>!document.querySelector('.combat-row[data-member="unknown"]'));
  state.settings.manualParty=['Aster','Sève'];await settle(()=>document.querySelector('.combat-row[data-member="party:300"].departed'));
  check(document.querySelectorAll('.combat-row').length===4&&document.querySelector('.combat-row.departed').textContent.includes('Lumière'),'Combat + : participation de l’ancien membre conservée');state.settings.manualParty=null;await settle(()=>!document.querySelector('.combat-row.departed'));
- check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat + : quatre membres visibles à 400 × 280');
+ check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat + : quatre membres visibles à 400 × 340');
  document.body.style.width='320px';
  check(document.querySelector('#mini-meter').scrollWidth<=document.querySelector('#mini-meter').clientWidth&&[...document.querySelectorAll('.combat-row')].every(row=>row.scrollWidth<=row.clientWidth),'Combat + : trois colonnes sans débordement à 320 pixels');
  check(localStorage.getItem('apm-layout')==='combat-all'&&!state.commands.slice(combinedBaseline).some(command=>/party_|capture_|new_combat|settings_save/.test(command)),'Combat + : préférence mémorisée sans modifier le moteur');

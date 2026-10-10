@@ -9,8 +9,8 @@ export function readLayout(value:string|null):Layout {return value==='cards'||va
 export function adoptCombat(value:string|null,applied:boolean):boolean {return !applied&&value!=='cards'&&value!=='panels'&&value!=='combat-all';}
 export function layoutSize(layout:Layout,members:number):{width:number;height:number} {
  const count=Math.max(0,members);
- return layout==='combat'?{width:360,height:Math.min(560,Math.max(230,120+count*27))}
-  :layout==='combat-all'?{width:400,height:Math.min(560,Math.max(280,150+count*32))}
+ return layout==='combat'?{width:360,height:Math.min(560,Math.max(280,184+count*27))}
+  :layout==='combat-all'?{width:400,height:Math.min(560,Math.max(330,208+count*33))}
   :layout==='cards'?{width:460,height:Math.min(620,Math.max(260,160+Math.ceil(count/2)*82))}
   :layout==='panels'?{width:780,height:Math.min(620,Math.max(260,200+count*36))}
   :{width:400,height:Math.min(450,Math.max(200,160+count*24))};
