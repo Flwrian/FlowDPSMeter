@@ -51,7 +51,7 @@ jobs:
           if ($draftSteps.Count -ne 1) { throw 'Draft asset upload and digest verification did not succeed.' }
           # A draft is visible in the authenticated list, but not reliably in
           # the endpoint for a published release by tag.
-          $releases = @(Invoke-RestMethod "$api/releases?per_page=100" -Headers $headers)
+          $releases = Invoke-RestMethod "$api/releases?per_page=100" -Headers $headers
           $matches = @($releases | Where-Object tag_name -eq $tag)
           if ($matches.Count -ne 1) { throw 'Missing or duplicate release draft.' }
           $release = $matches[0]
