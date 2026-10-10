@@ -24,10 +24,10 @@ Le script produit les ZIP Update et Sources dans release. Pour un pack complet, 
 1. Choisir un numéro X.Y.Z supérieur à la version publiée. Modifier package.json, package-lock.json, src-tauri/Cargo.toml, le package aion-party-meter dans Cargo.lock, tauri.conf.json, le numéro affiché dans src/main.ts et les guides. Conserver les sections de validation des versions précédentes.
 2. Exécuter les contrôles et produire les archives. Le workflow Build Windows release assets peut aussi être lancé depuis Actions. Un tag vX.Y.Z déclenche sa compilation ; le tag doit correspondre aux métadonnées.
 3. Pousser les sources et le tag dans Flwrian/FlowDPSMeter. Créer une release sur ce tag avec des notes de version.
-4. Joindre exactement **AionPartyMeter-X.Y.Z-Update-Windows-x64.zip** et **AionPartyMeter-X.Y.Z-Sources.zip**. Ajouter le ZIP **AionPartyMeter-X.Y.Z-Windows-x64.zip** pour les nouvelles installations. Le workflow fournit Update + Sources dans un artifact à télécharger puis décompresser avant de joindre les deux ZIP séparément.
+4. Joindre exactement **AionPartyMeter-X.Y.Z-Update-Windows-x64.zip** et **AionPartyMeter-X.Y.Z-Sources.zip**. Ajouter le ZIP **AionPartyMeter-X.Y.Z-Windows-x64.zip** pour les nouvelles installations. Le workflow génère les trois archives avec les dépendances Microsoft vérifiées, conserve un artifact et prépare automatiquement un brouillon sur un tag. Sur lancement manuel, cocher Prepare a draft release.
 5. Publier la release comme version stable et la définir comme dernière release. Un brouillon ou une préversion est ignoré. Un push de sources seul ne diffuse pas de mise à jour.
 
-Les hashes fournis par GitHub et le manifeste vérifient le téléchargement ; ils ne constituent pas une signature indépendante du dépôt. Le workflow construit les assets et ne publie aucune release de lui-même. Les sources GPL correspondantes sont incluses dans l’archive Sources.
+Les hashes fournis par GitHub et le manifeste vérifient le téléchargement ; ils ne constituent pas une signature indépendante du dépôt. Le workflow prépare un brouillon avec ses trois assets ; il ne publie pas la version stable de lui-même. Relire le brouillon puis cliquer Publish release sur GitHub. Les sources GPL correspondantes sont incluses dans l’archive Sources.
 
 ## Commandes du lanceur
 

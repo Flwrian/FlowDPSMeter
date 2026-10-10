@@ -81,4 +81,4 @@ Installer ce pack une première fois : les anciens lanceurs 0.1.7 et précédent
 
 La configuration `update.json` est préremplie. `DEMARRER.exe --updates` permet de désactiver la vérification. `DEMARRER.exe --skip-update` ouvre sans vérification pour ce lancement. L’ouverture directe de `AionPartyMeter.exe` contourne le lanceur et sa vérification. Les mises à jour nécessitent un dossier accessible en écriture.
 
-Pour publier les prochaines versions, suivre [le guide de release](packaging/windows/README.md). Chaque release doit fournir le ZIP Update et les sources GPL correspondantes. Un simple push de sources ne déclenche pas une mise à jour chez les utilisateurs.
+Pour publier les prochaines versions, suivre [le guide de release](packaging/windows/README.md). Le workflow prépare un brouillon avec le pack complet, le ZIP Update et les sources GPL correspondantes. Un simple push de sources ne déclenche pas une mise à jour chez les utilisateurs.

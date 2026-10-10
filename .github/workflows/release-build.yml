@@ -1,6 +1,11 @@
 name: Build Windows release assets
 on:
   workflow_dispatch:
+    inputs:
+      prepare_draft:
+        description: 'Prepare a draft release after successful builds'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 permissions:
@@ -8,8 +13,12 @@ permissions:
 jobs:
   windows:
     runs-on: windows-2022
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: '22'
@@ -25,13 +34,22 @@ jobs:
           $version=(Get-Content package.json | ConvertFrom-Json).version
           if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and application version differ.' }
       - name: Build Windows meter
-        run: cargo build --locked --manifest-path src-tauri/Cargo.toml --release --features custom-protocol --bin AionPartyMeter
+        run: |
+          rustup update stable
+          cargo build --locked --manifest-path src-tauri/Cargo.toml --release --features custom-protocol --bin AionPartyMeter
       - name: Build and test launcher
         run: powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build-launcher.ps1 -Test
-      - name: Produce update and GPL source archives
-        run: python packaging/windows/make-release.py --repository "${{ github.repository }}"
+      - name: Prepare verified Microsoft dependencies
+        run: ./packaging/windows/prepare-dependencies.ps1
+      - name: Produce complete pack, update and GPL source archives
+        run: python packaging/windows/make-release.py --repository "${{ github.repository }}" --full-pack release/dependency-seed
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: AionPartyMeter-release-assets
           path: release/*.zip
           if-no-files-found: error
+      - name: Prepare draft release
+        if: github.ref_type == 'tag' || inputs.prepare_draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./packaging/windows/publish-draft.ps1

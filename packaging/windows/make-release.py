@@ -35,7 +35,7 @@ for line in guide.splitlines():
 (payload/'licences').mkdir(exist_ok=True)
 shutil.copy2(root/'LICENSE',payload/'licences/GPL-3.0.txt')
 for font in ['pretendard','noto-sans-sc','noto-sans-tc']:shutil.copy2(root/'public/vendor/fonts'/font/'LICENSE',payload/'licences'/f'{font}-OFL.txt')
-(payload/'licences/DEPENDANCES.txt').write_text('Moteur A2Tools (taengu), GPL-3.0-only, commit 82e53c1008ac4c2974446cc703703f473bbbed81.\nMicrosoft Visual C++ et WebView2 : redistribution officielle non modifiée, licences Microsoft.\nNpcap : non redistribué, téléchargement officiel avec accord de licence par l’utilisateur.\nSources correspondantes : AionPartyMeter-'+version+'-Sources.zip\n',encoding='utf-8')
+(payload/'licences/DEPENDANCES.txt').write_text('Moteur A2Tools (taengu), GPL-3.0-only, commit 82e53c1008ac4c2974446cc703703f473bbbed81.\nMicrosoft Visual C++ et WebView2 : redistribution officielle non modifiée, licences Microsoft.\nhttps://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution\nhttps://www.microsoft.com/en-us/legal/terms-of-use\nhttps://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files\nhttps://aka.ms/VCRedistLicense\nNpcap : non redistribué, téléchargement officiel avec accord de licence par l’utilisateur.\nhttps://npcap.com/oem/redist\nSources correspondantes : AionPartyMeter-'+version+'-Sources.zip\n',encoding='utf-8')
 # Optional full pack: dependencies come from an existing verified distribution.
 if args.full_pack:
     previous=args.full_pack.resolve()
@@ -76,6 +76,7 @@ with zipfile.ZipFile(sources,'w',zipfile.ZIP_DEFLATED) as archive:
         for name in names:
             p=Path(folder)/name;rel=p.relative_to(root)
             if name.endswith(('.log','.local','.apm-new')) or name.startswith('.apm-update-'):continue
+            if name.startswith('.env') or name.endswith(('.pem','.key','.pfx')):continue
             if name.endswith('.apm.jsonl') and rel.parts[0]!='examples':continue
             archive.write(p,'AionPartyMeter/'+rel.as_posix())
 for artifact in [update,sources]:
