@@ -1,5 +1,6 @@
 /// Raw TCP payload captured from pcap.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all="camelCase")]
 pub struct CapturedPayload {
     pub src_port: u16,
     pub dst_port: u16,

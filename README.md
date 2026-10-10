@@ -1,138 +1,84 @@
-# A2Tools DPS Meter
+# AionPartyMeter
 
-[![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
-[![GitHub Issues](https://img.shields.io/github/issues/taengu/A2Tools-DPS-Meter)](https://github.com/taengu/A2Tools-DPS-Meter/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/taengu/A2Tools-DPS-Meter)](https://github.com/taengu/A2Tools-DPS-Meter/pulls)
+Application Windows x64 en français pour les statistiques du **groupe entier** dans Aion 2. Capture passive via Npcap, moteur Rust et overlay Tauri. Dérivé d’A2Tools, sous GPL-3.0-only.
 
-Real-time DPS meter overlay for AION 2. Captures game network packets to display damage, skills, and combat statistics.
+## Lancer
 
-The **[AION 2 DPS Meter website, a2tools.app](https://a2tools.app)** has the download, shared fight logs, leaderboards and class stats.
+1. Extraire tout `AionPartyMeter-0.1.8-Windows-x64.zip`, puis ouvrir **DEMARRER.exe**. Le lanceur vérifie les nouvelles versions stables sur GitHub, puis les dépendances. Les DLL Visual C++ requises et l’installateur WebView2 hors ligne sont fournis ; aucun outil de développement n’est nécessaire. Lire `LIRE-MOI.html` dans le pack ou `docs/INSTALLATION.md`.
+2. Installer [Npcap](https://npcap.com/#download) si le diagnostic le signale absent. Le chargement prend en charge son dossier standard `System32\Npcap` et le mode compatible WinPcap. Le pilote n’est pas embarqué ni installé automatiquement.
+3. Cliquer **Démarrer**. Si Npcap refuse l’accès, fermer l’application et la lancer en administrateur.
+4. Ouvrir **Groupe** : la liste des joueurs découverts est actualisée en direct. Cliquer **+ Ajouter** sur un coéquipier ou saisir son pseudo exact, sans quitter le groupe. Si la liste réseau est décodée, les membres sont ajoutés automatiquement. Une identité non encore reçue reste signalée, même sans dégâts.
+5. Combattre et ouvrir **Dégâts**, **Soins** ou **Dégâts reçus**. Cliquer un membre pour ses statistiques, compétences et courbes.
 
-**[Download Latest Release](https://github.com/taengu/A2Tools-DPS-Meter/releases)** | **[A2Tools.app](https://a2tools.app)**
+Version 0.1.6 : compact à trois statistiques simultanées (dégâts, soins, reçus), totaux du groupe et taux par seconde. Actualisation par défaut 10 Hz, réglable à 4 ou 20 Hz, animations discrètes désactivables. État du groupe courant et identités en attente visibles, retrait immédiat et mode solo explicite. Vue complète conservée : onglet **Toutes les stats** avec dix colonnes triables, totaux du groupe et trois courbes simultanées (DPS, HPS et dégâts reçus par seconde). La vue s’agrandit à son ouverture ; les graphiques peuvent être masqués. Fonctionnalités conservées : mode compact mémorisé, mises à jour du tableau sans recréer ses lignes, détails chargés à la demande et ajout immédiat des coéquipiers découverts dans Groupe. Le panneau reste actualisé pendant la saisie ; un court arrêt/redémarrage de capture sur la même connexion conserve les identités. Le client peut encore omettre sa liste de groupe en monde ouvert : la sélection explicite est alors nécessaire. Correctif précédent : attaques directes des monstres désormais décodées pour les dégâts reçus, y compris avant une attaque du groupe. Les premières identités sont conservées avant combat ; le panneau **Groupe** permet la sélection manuelle par pseudo exact si la liste réseau manque en monde ouvert. Les joueurs extérieurs restent exclus et les identités absentes affichent « — ». Voir la procédure de diagnostic dans `docs/INSTALLATION.md`.
 
-[한국어](README_KO.md) | [简体中文](README_ZH.md) | [繁體中文](README_ZH-TW.md)
+La capture ne démarre pas automatiquement et aucun paquet n’est envoyé au jeu. Il n’y a aucune lecture de mémoire, injection, automatisation du jeu, connexion à un compte ni upload.
 
-## Features
+**Compatibilité Global / Europe : la validation sur un combat réel en groupe reste à faire.** Les tests hors ligne vérifient le moteur et les formats de paquets ; ils ne prouvent pas que la version actuelle de ton client expose tous les événements nécessaires. L’overlay convient au jeu en fenêtre ou sans bordure ; le plein écran exclusif peut le masquer.
 
-- Real-time DPS tracking with per-player breakdown
-- Skill-level damage analysis with crit, back attack, parry, double, and perfect rates, plus optional block, perfect block, endurance, regeneration, miss and resist columns
-- DOT (damage over time) tracking
-- Summon damage merged with owner
-- Multiple target selection modes (Boss, Last Hit, All Targets, Train)
-- DPS chart and timeline visualization
-- Battle history with auto-save for boss fights
-- Ping monitoring
-- Ten languages: English, Korean, Chinese (Traditional and Simplified), Japanese, German, French, Spanish, Portuguese and Russian
-- Always-on-top transparent overlay
-- Themes and customization
-- Stream overlay for OBS on another PC: add the meter as a Browser Source, and choose the name shown for you
-- Fight uploads to [a2tools.app](https://a2tools.app/logs): a link to share, leaderboards and class stats
-- Windows and Linux ([Linux guide](docs/linux.md))
+## Statistiques
 
-## Requirements
+- Une ligne par membre réel du groupe, et un résumé collectif. Les autres joueurs ne deviennent pas des lignes.
+- Même durée pour le DPS et le HPS de tous : premier événement hostile jusqu’à la fin du combat ; minimum d’une seconde.
+- Dégâts directs et périodiques, soins prodigués et reçus, dégâts reçus, morts observées, compétences et impacts. Les impacts multiples ne sont pas des lancements de compétence.
+- Les soins sont les valeurs rapportées par le protocole. L’overheal et les soins effectifs ne sont pas estimés.
+- Les invocations sont attribuées seulement lorsque le propriétaire est confirmé. Les identités de personnage ne sont pas déduites de sa classe seule.
+- Les membres sortis restent dans le combat courant, avec la mention « a quitté le groupe ». Leurs actions après leur sortie ne sont pas ajoutées.
+- Le filtre cible agit sur les dégâts ; les soins et dégâts reçus restent ceux du groupe pendant le combat. L’historique conserve les dégâts de **toutes** les cibles, indépendamment de ce filtre.
+- Fin au décès de la cible suivie, au décès d’un boss combattu, au changement de zone détecté, à la déconnexion, à la fermeture du jeu, à l’arrêt manuel ou après dix secondes sans événement pertinent. Une téléportation interne pendant un combat n’est pas considérée automatiquement comme un changement de zone.
 
-**Windows**
+## Overlay et historique
 
-- **Windows 10/11** (x86_64)
-- **[Npcap](https://npcap.com)** — required for packet capture
-  - During Npcap installation, check **"Install Npcap in WinPcap API-compatible Mode"**
-- **Administrator privileges** — required for raw packet capture
+Le bouton **▤** ou Réglages → **Mode compact** garde le temps de combat, les totaux collectifs et trois colonnes simultanées par membre : dégâts, soins et dégâts reçus (total et taux/s). Il mémorise ce mode et permet de revenir à la taille complète. Taille minimale : 320 × 180 en compact, 420 × 420 sinon. Déplacer la fenêtre par son titre ; redimensionner par ses bords. Opacité, interface réseau et maintien au-dessus du jeu sont réglables. Le verrouillage laisse les clics traverser : **icône AionPartyMeter près de l’horloge → Afficher et déverrouiller** pour retrouver les contrôles.
 
-**Linux** (playing through Proton)
+L’historique conserve les 200 derniers combats dans le dossier local de l’application. Le diagnostic permet d’ouvrir ce dossier. Les exports JSON comprennent compétences et courbes ; les CSV donnent un tableau par membre. Les sauvegardes sont atomiques. Un historique illisible est conservé sans écrasement et une erreur est affichée.
 
-- **64-bit (x86_64) with WebKitGTK 4.1:** Ubuntu 22.04 or newer, Debian 12, Fedora 39 or newer, openSUSE, current Arch, CachyOS, Manjaro or EndeavourOS, Bazzite and other image-based Fedoras, or Steam Deck (SteamOS, through distrobox)
-- Packages and setup for each: the **[Linux guide](docs/linux.md)**
+## Enregistrement et replay
 
-## Installation
+Dans **Diagnostic**, démarrer un enregistrement réseau manuel avant de former le groupe ou de changer de zone. Les identités envoyées avant l’enregistrement ne peuvent pas être reconstituées après coup.
 
-1. Install [Npcap](https://npcap.com) with WinPcap API-compatible mode enabled
-2. Download the latest MSI installer from [Releases](https://github.com/taengu/A2Tools-DPS-Meter/releases)
-3. Run the installer
-4. Launch A2Tools DPS Meter (run as Administrator)
+**Importer** accepte :
 
-**Linux:** packages for Ubuntu/Debian (.deb), Fedora/openSUSE (.rpm), Bazzite, Arch/CachyOS/Manjaro and Steam Deck — see the **[Linux guide](docs/linux.md)**.
+- un rapport JSON exporté, pour le consulter ;
+- une capture `*.apm.jsonl`, pour la décoder hors ligne avec le même moteur ;
+- le scénario `examples/groupe-synthetique.apm.jsonl`, pour vérifier l’interface. Il est explicitement marqué synthétique et n’est pas ajouté à l’historique réel.
 
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?logo=ubuntu&logoColor=white)](docs/linux.md#ubuntu-debian-linux-mint-pop_os) [![Debian](https://img.shields.io/badge/Debian-A81D33?logo=debian&logoColor=white)](docs/linux.md#ubuntu-debian-linux-mint-pop_os) [![Linux Mint](https://img.shields.io/badge/Linux_Mint-87CF3E?logo=linuxmint&logoColor=white)](docs/linux.md#ubuntu-debian-linux-mint-pop_os) [![Pop!_OS](https://img.shields.io/badge/Pop%21__OS-48B9C7?logo=popos&logoColor=white)](docs/linux.md#ubuntu-debian-linux-mint-pop_os) [![Fedora](https://img.shields.io/badge/Fedora-51A2DA?logo=fedora&logoColor=white)](docs/linux.md#fedora) [![Bazzite](https://img.shields.io/badge/Bazzite-8A3FFC?logo=fedora&logoColor=white)](docs/linux.md#bazzite-silverblue-kinoite-aurora-bluefin) [![Steam Deck](https://img.shields.io/badge/Steam_Deck-1A9FFF?logo=steamdeck&logoColor=white)](docs/linux.md#steam-deck-steamos) [![openSUSE](https://img.shields.io/badge/openSUSE-73BA25?logo=opensuse&logoColor=white)](docs/linux.md#opensuse) [![Arch](https://img.shields.io/badge/Arch-1793D1?logo=archlinux&logoColor=white)](docs/linux.md#cachyos-arch-manjaro-endeavouros) [![CachyOS](https://img.shields.io/badge/CachyOS-08A88A?logo=cachyos&logoColor=white)](docs/linux.md#cachyos-arch-manjaro-endeavouros) [![Manjaro](https://img.shields.io/badge/Manjaro-35BF5C?logo=manjaro&logoColor=white)](docs/linux.md#cachyos-arch-manjaro-endeavouros) [![EndeavourOS](https://img.shields.io/badge/EndeavourOS-7F3FBF?logo=endeavouros&logoColor=white)](docs/linux.md#cachyos-arch-manjaro-endeavouros)
+Les captures brutes peuvent contenir des noms et messages du jeu. Elles restent sur ce PC. Le replay est accéléré et utilise les horodatages enregistrés, sans s’appuyer sur la date de relecture.
 
-## Streaming from another PC (OBS)
+## Développer
 
-If OBS runs on a second PC, it cannot capture the meter's window on the game PC. The meter can serve its display over your home network instead:
+Prérequis : Node 18+, Rust stable MSVC (édition 2024), Visual Studio Build Tools avec C++, Windows SDK. Npcap est nécessaire à la capture, pas à la compilation ni aux tests hors ligne.
 
-1. On the game PC, open **Settings → Streaming** and turn on **Stream overlay (OBS on another PC)**. The default port is 18731; change it if something else uses it.
-2. The first time, Windows Defender Firewall asks whether to allow the meter. Allow it on **Private networks** (your home network). The meter never adds a firewall rule by itself.
-3. Copy the URL shown (`http://<game PC's LAN IP>:18731/overlay?key=<key>`). If the PC has more than one network address, each is listed; use the one on the same network as the streaming PC.
-4. In OBS on the streaming PC, add a **Browser Source** with that URL. The background is transparent, and the rows scale with the source's width.
-
-The overlay shows the boss, the fight timer and the rows the meter shows (name, class, DPS, damage, share), and updates a few times a second. It is read-only and only reachable with the key; **New key** cuts off every link handed out before. Add `&lang=ko` (or `en`, `de`, `ja`, …) to the URL to change the language of its few labels. Add `&rows=5` to show at most five rows, so they always fit the height you gave the source (about 0.43 × its width for five rows, plus 0.07 × width for each more); you stay on it, in the last row if you are below the cut. **Your name on stream** sets the name the overlay shows for you; leave it blank to show your character name. Turn the setting off and the meter stops listening.
-
-## Building from Source
-
-### Prerequisites
-
-- [Rust](https://rustup.rs/) (latest stable)
-- [Node.js](https://nodejs.org/) (v18+)
-- [Npcap](https://npcap.com) installed
-
-### Build
-
-```bash
-npm install
-npm run tauri build
+```powershell
+./dev.ps1 -Mode dev
+./dev.ps1 -Mode test
+./dev.ps1 -Mode build
+./dev.ps1 -Mode replay -Capture ./examples/groupe-synthetique.apm.jsonl
 ```
 
-The MSI installer will be at `src-tauri/target/release/bundle/msi/`.
+`build` crée `src-tauri/target/release/AionPartyMeter.exe`. Le script réutilise la toolchain locale installée dans le dossier de travail de cette livraison si `cargo` n’est pas dans le PATH. Sur un autre PC, installer Rust normalement.
 
-### Development
+L’analyse technique et le rapport de vérification se trouvent dans `docs/ANALYSE.md` et `docs/VALIDATION.md`.
 
-```bash
-npm run tauri dev
-```
+## Origine et licence
 
-## FAQ
+Moteur de protocole : [taengu/A2Tools-DPS-Meter](https://github.com/taengu/A2Tools-DPS-Meter), commit `82e53c1008ac4c2974446cc703703f473bbbed81`. Le fichier `LICENSE` est conservé. Les modifications, l’interface et les sources distribuées restent GPL-3.0-only. Les polices embarquées conservent leurs licences OFL.
 
-**Q: The meter shows "Detecting AION2 connection..."**
-A: Make sure AION 2 is running and the app has administrator privileges. If using a VPN or ping reducer, the app will detect the loopback adapter automatically.
+Inspiration fonctionnelle : [jeojabon/JaMeter](https://github.com/jeojabon/JaMeter). Son dépôt ne publie pas son moteur ; aucun code ni visuel propriétaire de JaMeter n’a été repris. Npcap, Aion 2 et les données du jeu appartiennent à leurs auteurs respectifs.
 
-**Q: My name doesn't appear on the meter**
-A: Enter your character name and actor ID in Settings. The name is auto-detected from the AION 2 window title.
 
-**Q: Npcap is installed but capture doesn't work**
-A: Reinstall Npcap and ensure "WinPcap API-compatible Mode" is checked during installation.
+## Version 0.1.7 — choix d’affichage et feedback visuel
 
-## Community
+Sélecteur **Affichage du meter** dans la barre du groupe : Bandeau (pseudo et trois totaux), Cartes (classe, totaux et taux), 3 panneaux (classement indépendant par statistique), Développé (onglets, tableau complet et graphiques). Détails et courbes au clic. Le choix est mémorisé localement ; le changement conserve la position de fenêtre et adapte sa taille.
 
-- [Discord](https://discord.gg/Aion2Global)
-- [A2Tools.app](https://a2tools.app)
+La barre d’état distingue capture active, recherche du jeu, replay et rapport historique, avec activité des paquets, état du combat et pertes détectées. Survoler la capture ou le groupe pour les compteurs, la connexion et les identités confirmées/en attente ; cliquer pour le diagnostic. Aucun changement au moteur automatique, aux règles de groupe, à la capture ou au calcul des statistiques.
 
-### Building your own meter?
+## Version 0.1.8 — mises à jour GitHub
 
-Your meter can upload its logs to [a2tools.app](https://a2tools.app/logs) as well. The site stores them, gives each one a link to share, and puts them on the leaderboard and in its stats. To connect yours, join the [Discord](https://discord.gg/Aion2Global) and post in **#aion2-dpsmeter**.
+Le dépôt officiel est [Flwrian/FlowDPSMeter](https://github.com/Flwrian/FlowDPSMeter). **DEMARRER.exe** consulte la dernière release stable au lancement et installe une version plus récente avant d’ouvrir l’overlay. Sans Internet, en cas de vérification impossible ou après annulation, la version installée s’ouvre. Si le meter est déjà ouvert, aucun remplacement n’a lieu : le fermer puis relancer DEMARRER.exe.
 
-## Support
+Installer ce pack une première fois : les anciens lanceurs 0.1.7 et précédents ne savent pas se mettre à jour. Le petit ZIP Update sert au lanceur ; pour une nouvelle installation, télécharger le ZIP Windows complet. Les paramètres, historique et captures restent locaux. Aucun compte GitHub ni token n’est requis pour utiliser les mises à jour du dépôt public.
 
-Say thanks and fund new cool projects & features!
+La configuration `update.json` est préremplie. `DEMARRER.exe --updates` permet de désactiver la vérification. `DEMARRER.exe --skip-update` ouvre sans vérification pour ce lancement. L’ouverture directe de `AionPartyMeter.exe` contourne le lanceur et sa vérification. Les mises à jour nécessitent un dossier accessible en écriture.
 
-- <img src="wechat.png" width="150">
-- ☕ [Buy me a Coffee](https://ko-fi.com/hiddencube)
-- ☕ [在爱发电支持我](https://afdian.com/a/hiddencube)
-- 🅿️ [Send with PayPal](https://www.paypal.me/taengoo)
-- 🎁 [Donate with Crypto](https://nowpayments.io/donation/thehiddencube)
-- **BTC**: `1GexKhgVZPYRqpfCKydXLoNUXRRRUoAUwT`
-- **ETH**: `0x38F0bc371A563A24eCa6034cFf77eB6173c7e3e7`
-- **USDC**: `0xA9571Fc95666350f6DFFB8Fb80ee27eE7db46b56`
-
-## License
-
-[GPL-3.0](LICENSE)
-
-### Fixes from Daevalog
-
-Some parser and storage fixes come from [Daevalog](https://github.com/Seralth/Daevalog), Seralth's GPL-3.0 fork of this meter. Each one is committed under Seralth's name, with a `Ported-from:` line naming the original commit.
-
-### Fonts
-
-The meter comes with these fonts. Each is under the SIL Open Font License, version 1.1.
-
-- Noto Sans SC: [public/vendor/fonts/noto-sans-sc/LICENSE](public/vendor/fonts/noto-sans-sc/LICENSE)
-- Noto Sans TC: [public/vendor/fonts/noto-sans-tc/LICENSE](public/vendor/fonts/noto-sans-tc/LICENSE)
-- Pretendard: [public/vendor/fonts/pretendard/LICENSE](public/vendor/fonts/pretendard/LICENSE)
+Pour publier les prochaines versions, suivre [le guide de release](packaging/windows/README.md). Chaque release doit fournir le ZIP Update et les sources GPL correspondantes. Un simple push de sources ne déclenche pas une mise à jour chez les utilisateurs.

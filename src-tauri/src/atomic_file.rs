@@ -57,7 +57,7 @@ fn write_with(
     let (temporary, mut file) = create_temporary(path)?;
     let written = file.write_all(contents).and_then(|_| {
         crate::platform::atomic_file::apply_permissions(&temporary, &file, &permissions)
-    });
+    }).and_then(|_|file.sync_all());
     drop(file);
     if let Err(error) = written {
         let _ = std::fs::remove_file(&temporary);

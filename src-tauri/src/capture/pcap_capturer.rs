@@ -10,6 +10,8 @@ use tracing::{error, info, warn};
 
 use super::captured_payload::CapturedPayload;
 
+pub static DROPPED_PACKETS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static LAST_CAPTURE_ERROR: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -249,6 +251,7 @@ impl PcapCapturer {
     }
 
     pub fn start(&self) {
+        *LAST_CAPTURE_ERROR.lock().unwrap() = None;
         if self.running.swap(true, Ordering::SeqCst) {
             return;
         }
@@ -375,6 +378,7 @@ fn start_capture_thread(
             Ok(h) => h,
             Err(e) => {
                 warn!("Failed to open capture on {}: {}", label, e);
+                *LAST_CAPTURE_ERROR.lock().unwrap() = Some(format!("Ouverture de {label} impossible : {e}"));
                 return;
             }
         };
@@ -403,13 +407,16 @@ fn start_capture_thread(
                     let frame = unsafe { std::slice::from_raw_parts(data, len) };
                     if let Some(mut payload) = parse_tcp_payload(frame, link_type, &label) {
                         payload.captured_at_ms = ts;
-                        let _ = sender.try_send(payload);
+                        if sender.try_send(payload).is_err() {
+                            DROPPED_PACKETS.fetch_add(1, Ordering::Relaxed);
+                        }
                     }
                 }
                 0 => continue, // Timeout
                 -2 => break,   // EOF (savefile)
                 _ => {
                     warn!("Capture error on {} (ret={})", label, ret);
+                    *LAST_CAPTURE_ERROR.lock().unwrap() = Some(format!("Capture interrompue sur {label} (code {ret})"));
                     break;
                 }
             }

@@ -1,0 +1,37 @@
+name: Build Windows release assets
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Build and test frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Verify tag
+        shell: pwsh
+        run: |
+          $version=(Get-Content package.json | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and application version differ.' }
+      - name: Build Windows meter
+        run: cargo build --locked --manifest-path src-tauri/Cargo.toml --release --features custom-protocol --bin AionPartyMeter
+      - name: Build and test launcher
+        run: powershell.exe -ExecutionPolicy Bypass -File packaging/windows/build-launcher.ps1 -Test
+      - name: Produce update and GPL source archives
+        run: python packaging/windows/make-release.py --repository "${{ github.repository }}"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: AionPartyMeter-release-assets
+          path: release/*.zip
+          if-no-files-found: error

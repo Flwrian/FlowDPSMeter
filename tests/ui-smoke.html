@@ -1,0 +1,174 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>AionPartyMeter — test UI synthétique</title>
+<style>body{width:420px}#app{height:340px}#app .shell{height:340px}#ui-result{padding:12px;background:#15251e;color:#abdbbd;white-space:pre-wrap;font:12px monospace}</style>
+<div id="app"></div><pre id="ui-result">Test UI synthétique en cours…</pre>
+<script type="module">
+// Browser-only test adapter for the installed Tauri API. No packet capture,
+// filesystem command, game access or production service is simulated as live.
+const {groupTimeline}=await import('../src/chart.ts');
+const full=await (await fetch('./ui-fixture.json')).json();
+const state={settings:{opacity:.96,alwaysOnTop:true,width:620,height:600,x:null,y:null,preferredDevice:null,manualParty:['Aster','Lumière','Sève'],compact:false},observedPlayers:['Aster','Lumière','Sève'],polls:0};
+localStorage.setItem('apm-layout','band');
+localStorage.setItem('apm-refresh-rate','10');localStorage.setItem('apm-motion','true');localStorage.setItem('apm-overview','false');localStorage.setItem('apm-graphs','true');localStorage.setItem('apm-compact','false');
+state.commands=[];state.packets=100;state.losses=0;state.live=false;state.error=null;
+window.isTauri=true;
+window.__TAURI_INTERNALS__={invoke:async(command,args)=>{
+ state.commands.push(command);
+ if(command==='dashboard'){
+  state.polls++;const snapshot=structuredClone(full);
+  if(state.settings.manualParty?.includes('Nouveau'))snapshot.members.push({member:{key:'new',name:'Nouveau',class:'Clerc',present:true,local:false},identityConfirmed:true,totals:{damage:0,healing:0,healingReceived:0,damageReceived:0,deaths:0,dps:0,hps:0},contribution:0,skills:[],timeline:[]});
+  if(state.unknown)snapshot.members.push({member:{key:'unknown',name:'EnAttente',class:'',present:true,local:false},identityConfirmed:false,totals:{damage:0,healing:0,healingReceived:0,damageReceived:0,deaths:0,dps:0,hps:0},contribution:0,skills:[],timeline:[]});
+  if(state.settings.manualParty!==null)for(const row of snapshot.members)if(!row.member.local)row.member.present=state.settings.manualParty.includes(row.member.name);
+  const dps=snapshot.members.find(r=>r.member.name==='Aster');
+  if(state.bump){dps.totals.damage+=state.bump;dps.totals.dps=dps.totals.damage/snapshot.duration;snapshot.totals.damage+=state.bump;snapshot.totals.dps=snapshot.totals.damage/snapshot.duration;dps.timeline[0].damage+=state.bump;}
+  const partyMembers=snapshot.members.filter(r=>r.member.present).map(r=>({member:r.member,identityConfirmed:r.identityConfirmed!==false}));
+  const series=args.overview?groupTimeline(snapshot.members):[];
+  for(const row of snapshot.members)if(row.member.key!==args.detailMember){row.skills=[];row.timeline=[];}
+  return {snapshot,partyMembers,groupTimeline:series,settings:structuredClone(state.settings),observedPlayers:[...state.observedPlayers],rosterUpdates:0,persistenceError:null,dataDirectory:'Test synthétique',diagnostics:{mode:state.live?'live':'replay',status:'TEST UI SYNTHÉTIQUE',error:state.error,npcap:false,administrator:false,devices:[],selectedDevice:null,connection:state.live?'TEST-FLUX-SYNTHÉTIQUE':null,packets:state.packets,parsed:0,duplicates:0,losses:state.losses,recording:null,fixture:true}};
+ }
+ if(command==='party_add'){state.settings.manualParty=[...new Set([...state.settings.manualParty,args.name.trim()])];return;}
+ if(command==='party_remove'){state.settings.manualParty=(state.settings.manualParty??full.members.filter(r=>!r.member.local).map(r=>r.member.name)).filter(n=>n!==args.name);return;}
+ if(command==='party_save'){state.settings.manualParty=args.names;return;}
+ if(command==='window_geometry')return {x:10,y:20,width:620,height:600,scale:1};
+ if(command==='window_transform'){state.geometry=args.geometry;document.body.style.width=args.geometry.width+'px';document.querySelector('#app').style.height=args.geometry.height+'px';document.querySelector('.shell').style.height=args.geometry.height+'px';return;}
+ if(command==='compact_set'){state.settings.compact=args.compact;return;}
+ if(command==='history_list')return [{id:full.id,startedAt:full.startedAt,duration:full.duration,damage:full.totals.damage,healing:full.totals.healing,members:full.members.length,reason:'Test synthétique'}];
+ if(command==='window_action'&&args.action==='overview')return;
+ if(command==='history_load')return structuredClone(full);
+ throw Error(`Commande non prévue dans ce test : ${command}`);
+}};
+await import('../src/main.ts');
+const result=document.querySelector('#ui-result');const passed=[];
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const check=(value,label)=>{if(!value)throw Error(label);passed.push('✓ '+label);};
+try{
+ await wait(350);
+ const row=document.querySelector('[data-member="party:200"]');row.focus();
+ const count=state.polls;await wait(850);
+ check(state.polls>=count+6,'Actualisation à 10 Hz avec IPC synthétique');
+ check(row===document.querySelector('[data-member="party:200"]')&&document.activeElement===row,'Ligne et focus conservés pendant les mises à jour');
+ document.querySelector('[data-action="party"]').click();await wait(50);
+ const input=document.querySelector('#party-quick-name');input.value='Brouillon';input.focus();
+ document.querySelector('.party-advanced').open=true;
+ state.observedPlayers.push('Nouveau');await wait(350);
+ check(!!document.querySelector('[data-add-player="Nouveau"]'),'Nouvelle identité visible dans le panneau déjà ouvert');
+ check(document.querySelector('#party-quick-name')===input&&input.value==='Brouillon'&&document.activeElement===input,'Saisie préservée pendant la découverte');
+ document.querySelector('[data-add-player="Nouveau"]').click();await wait(400);
+ check(state.settings.manualParty?.includes('Nouveau')&&document.querySelector('[data-add-player="Nouveau"]').disabled,'Ajout immédiat en un clic');
+ check(state.settings.manualParty.includes('Aster'),'Membres précédents conservés');
+ document.querySelector('[data-action="dismiss"]').click();
+ document.querySelector('[data-member="party:200"]').click();await wait(400);
+ check(!!document.querySelector('.skill-row')&&!!document.querySelector('.chart'),'Compétences et courbe chargées à la demande');
+ document.querySelector('[data-action="dismiss"]').click();
+ document.querySelector('[data-action="export"]').click();await wait(700);
+ check(!!document.querySelector('[data-format="json"]'),'Panneau export reste ouvert pendant les mises à jour');
+ document.querySelector('[data-action="dismiss"]').click();
+ document.querySelector('[data-action="compact"]').click();await wait(400);
+ check(document.querySelector('.shell').classList.contains('compact'),'Mode compact activé');
+
+ check(document.querySelectorAll('.mini-body .mini-row').length===5,'Compact conserve le soigneur et le membre sans dégâts');
+ check([...document.querySelectorAll('.mini-row')].every(row=>row.querySelectorAll('.mini-cell').length===3),'Trois statistiques simultanées dans chaque ligne compacte');
+ check(getComputedStyle(document.querySelector('.shell>.tabs')).display==='none'&&document.querySelector('#rows').hidden,'Aucun changement d’onglet nécessaire en compact');
+ const miniHeal=[...document.querySelectorAll('.mini-row')].find(r=>r.textContent.includes('Lumière'));
+ check(miniHeal.querySelector('.damage strong').textContent==='0'&&miniHeal.querySelector('.healing strong').textContent!=='0','Soins du soigneur visibles à côté de ses dégâts nuls');
+ document.querySelector('[data-compact-sort="healing"]').click();await wait(50);
+ check(document.querySelector('.mini-body .mini-row').textContent.includes('Lumière'),'Tri des lignes compactes par soins');
+ const miniFocus=document.querySelector('.mini-row');miniFocus.focus();await wait(350);
+ check(document.activeElement===miniFocus&&document.querySelector('.mini-row')===miniFocus,'Ligne et focus du compact conservés pendant les mises à jour');
+ state.unknown=true;await wait(250);
+ check([...document.querySelector('[data-member="unknown"]')?.querySelectorAll('.mini-cell strong')??[]].length===3&&[...document.querySelector('.mini-row[data-member="unknown"]').querySelectorAll('.mini-cell strong')].every(n=>n.textContent==='—'),'Trois valeurs inconnues en compact, sans faux zéro');
+ state.unknown=false;await wait(250);
+ document.body.style.width='320px';
+ check(document.querySelector('#mini-meter').scrollWidth<=document.querySelector('#mini-meter').clientWidth,'Compact tient en largeur à 320 pixels');
+ document.body.style.width='420px';
+ document.querySelector('[data-action="settings"]').click();await wait(50);
+ check(document.querySelector('#refresh-rate').value==='10','Actualisation par défaut de 10 fois par seconde');
+ document.querySelector('#refresh-rate').value='20';document.querySelector('#refresh-rate').dispatchEvent(new Event('change',{bubbles:true}));
+ const fast=state.polls;await wait(650);check(state.polls>=fast+8,'Option 20 Hz appliquée sans commandes de capture');
+ document.querySelector('#refresh-rate').value='10';document.querySelector('#refresh-rate').dispatchEvent(new Event('change',{bubbles:true}));
+ document.querySelector('#motion-option').checked=false;document.querySelector('#motion-option').dispatchEvent(new Event('change',{bubbles:true}));
+ await wait(250);state.bump=100;await wait(150);
+ check(document.querySelector('.shell').classList.contains('no-motion')&&[...document.querySelectorAll('.mini-cell strong')].every(n=>n.getAnimations().length===0),'Animations désactivables sans bloquer les valeurs');
+ document.querySelector('#motion-option').checked=true;document.querySelector('#motion-option').dispatchEvent(new Event('change',{bubbles:true}));
+ document.querySelector('[data-action="dismiss"]').click();
+ state.bump=200;await wait(140);
+ check(document.querySelector('.mini-row[data-member="party:200"] .damage strong').title!==undefined&&document.querySelector('.mini-row[data-member="party:200"] .damage').title.includes('620'),'Nouveaux dégâts réels de la fixture visibles sans interpolation');
+ state.bump=0;
+
+ document.body.style.width='1120px';document.querySelector('#app').style.height='780px';
+ document.querySelector('.shell').style.height='780px';
+ document.querySelector('[data-action="overview"]').click();await wait(500);
+ check(!state.settings.compact&&document.querySelector('.shell').classList.contains('overview'),'Vue complète quitte le mode compact');
+ check(document.querySelectorAll('.all-stats thead th').length===10&&document.querySelectorAll('.all-stats tbody tr').length===5,'Dix colonnes et tous les membres dans un même tableau');
+ check(document.querySelectorAll('#group-graphs svg').length===3,'Trois graphiques collectifs simultanés');
+ state.unknown=true;await wait(350);
+ const unknown=document.querySelector('.all-stats [data-key="unknown"]');
+ check([...unknown.children].slice(2).every(cell=>cell.textContent==='—'),'Identité manquante signalée dans les huit colonnes numériques');
+ state.unknown=false;await wait(350);
+ const healRow=[...document.querySelectorAll('.all-stats tbody tr')].find(r=>r.textContent.includes('Lumière'));
+ check(healRow.children[2].textContent==='0'&&healRow.children[5].textContent!=='0','Soigneur sans dégâts affiche ses soins sur la même ligne');
+ document.querySelector('[data-column="hps"]').click();await wait(50);
+ check(document.querySelector('.all-stats tbody tr').textContent.includes('Lumière'),'Tri HPS place le soigneur en tête');
+ const member=document.querySelector('.all-stats tbody [data-member]');member.focus();await wait(700);
+ check(document.activeElement===member,'Focus du tableau conservé pendant les actualisations');
+ document.querySelector('[data-action="graphs"]').click();await wait(50);
+ check(document.querySelector('#group-graphs').hidden&&!document.querySelector('#all-table').hidden,'Graphiques masqués, tableau complet conservé');
+ document.querySelector('[data-action="graphs"]').click();await wait(50);
+ check(!document.querySelector('#group-graphs').hidden,'Graphiques réaffichés');
+ document.querySelector('.all-stats tbody [data-member]').click();await wait(400);
+ check(!!document.querySelector('.detail-stats'),'Détails accessibles depuis le tableau complet');
+ document.querySelector('[data-detail-metric="healing"]').click();await wait(50);
+ check(!!document.querySelector('.skill-row')&&!!document.querySelector('.sheet .chart'),'Compétences et courbe de soins du soigneur accessibles');
+ document.querySelector('[data-action="dismiss"]').click();
+ document.querySelector('[data-action="history"]').click();await wait(50);
+ document.querySelector('[data-history]').click();await wait(350);
+ check(document.querySelectorAll('.all-stats tbody tr').length===4&&document.querySelectorAll('#group-graphs svg').length===3,'Tableau et courbes disponibles dans l’historique');
+ document.querySelector('[data-metric="damage"]').click();await wait(50);
+ check(!document.querySelector('.shell').classList.contains('overview')&&!document.querySelector('#rows').hidden,'Retour à la vue Dégâts');
+
+ document.querySelector('[data-action="party"]').click();await wait(50);
+ document.querySelector('[data-remove-player="Nouveau"]').click();await wait(300);
+ check(!state.settings.manualParty.includes('Nouveau')&&state.settings.manualParty.includes('Aster'),'Retrait rapide conserve les autres membres');
+ document.querySelector('[data-action="solo-party"]').click();await wait(300);
+ check(state.settings.manualParty.length===0&&document.querySelector('#party-followed').querySelectorAll('.followed-member').length===1,'Mode solo ne suit que le personnage local');
+ check(document.querySelector('#party-current-status').textContent==='Solo','État actuel indépendant du rapport historique affiché');
+ document.querySelector('[data-action="auto-party"]').click();await wait(300);
+ check(state.settings.manualParty===null&&document.querySelector('#party-followed').querySelectorAll('.followed-member').length===4,'Retour au groupe automatique reconnu par la fixture');
+ document.querySelector('[data-action="dismiss"]').click();
+ document.querySelector('[data-action="compact"]').click();await wait(300);
+ document.body.style.width='400px';document.querySelector('.shell').style.height='300px';document.querySelector('#app').style.height='300px';
+
+ const choose=async value=>{const selector=document.querySelector('#display-layout');selector.value=value;selector.dispatchEvent(new Event('change',{bubbles:true}));await wait(350);};
+ const baseline=state.commands.length;
+ await choose('cards');document.body.style.width='460px';document.querySelector('.shell').style.height='324px';
+ check(document.querySelector('#mini-meter').dataset.layout==='cards'&&document.querySelectorAll('.mini-row').length===4,'Mode Cartes : tous les membres et trois statistiques');
+ check(getComputedStyle(document.querySelector('.mini-body')).gridTemplateColumns.split(' ').length===2,'Cartes réparties sur deux colonnes');
+ check(localStorage.getItem('apm-layout')==='cards'&&state.geometry.width===460&&state.geometry.x===10,'Affichage mémorisé et fenêtre redimensionnée sans déplacement');
+ document.body.style.width='320px';
+ check(getComputedStyle(document.querySelector('.mini-body')).gridTemplateColumns.split(' ').length===1&&document.querySelector('#mini-meter').scrollWidth<=document.querySelector('#mini-meter').clientWidth,'Cartes sur une colonne à petite largeur');
+ await choose('panels');document.body.style.width='780px';document.querySelector('.shell').style.height='344px';
+ check(document.querySelectorAll('.meter-panel').length===3&&document.querySelectorAll('.panel-row').length===12,'Trois panneaux : quatre membres dans chaque statistique');
+ check([...document.querySelectorAll('.panel-list')].every(list=>list.lastElementChild.getBoundingClientRect().bottom<=list.getBoundingClientRect().bottom),'Quatre membres visibles sans défilement à la taille recommandée des panneaux');
+ check(document.querySelector('[data-kind="damage"] .panel-row').textContent.includes('Aster')&&document.querySelector('[data-kind="healing"] .panel-row').textContent.includes('Lumière')&&document.querySelector('[data-kind="damageReceived"] .panel-row').textContent.includes('Bastion'),'Classement indépendant dégâts, soins et dégâts reçus');
+ check([...document.querySelectorAll('.meter-panel-head .mini-cell')].every(c=>c.title.includes('au total')),'Totaux collectifs et taux visibles dans chaque panneau');
+ const panelFocus=document.querySelector('[data-kind="healing"] .panel-row');panelFocus.focus();await wait(400);
+ check(document.activeElement===panelFocus,'Focus conservé dans les trois panneaux pendant les actualisations');
+ panelFocus.click();await wait(350);
+ check(document.querySelector('[data-detail-metric="healing"]').classList.contains('selected')&&!!document.querySelector('.skill-row')&&document.querySelector('.sheet .chart svg').getAttribute('aria-label').includes('Soins'),'Clic sur Soins ouvre les compétences et courbes de soins');
+ document.querySelector('[data-action="dismiss"]').click();
+ document.body.style.width='400px';await choose('band');document.querySelector('.shell').style.height='256px';
+ check(getComputedStyle(document.querySelector('.mini-row .mini-cell small')).display==='none'&&getComputedStyle(document.querySelector('.mini-name small')).display==='none','Bandeau réduit au pseudo et aux trois totaux');
+ check(document.querySelector('.mini-total').getBoundingClientRect().bottom<document.querySelector('footer').getBoundingClientRect().top+1,'Résumé collectif visible en bas du bandeau');
+ check(!state.commands.slice(baseline).some(c=>/party_|capture_|new_combat|settings_save/.test(c)),'Changer d’affichage ne modifie ni groupe, ni capture, ni combat');
+ document.querySelector('[data-action="history"]').click();await wait(50);document.querySelector('[data-action="live"]').click();state.live=true;await wait(350);
+ check(document.querySelector('#capture-label').textContent==='Capture active'&&!document.querySelector('#packet-feedback').classList.contains('receiving'),'Capture active distinguée de l’activité, sans faux paquet au premier compteur');
+ state.packets++;await wait(200);check(document.querySelector('#packet-feedback').classList.contains('receiving'),'Activité indiquée lors de nouveaux paquets');
+ await wait(900);check(!document.querySelector('#packet-feedback').classList.contains('receiving')&&document.querySelector('#capture-label').textContent==='Capture active','Repos des paquets sans faux arrêt de capture');
+ check(document.querySelector('.party-context>button').title.includes('4/4 identités confirmées'),'Détail des identités disponible au survol du groupe');
+ state.unknown=true;await wait(200);check(document.querySelector('.party-context>button').title.includes('4/5 identités confirmées')&&document.querySelector('#partial-feedback').hidden,'Identité en attente distincte des pertes réseau');state.unknown=false;
+ state.losses=1;await wait(200);check(!document.querySelector('#partial-feedback').hidden,'Pertes réelles affichent le badge Partiel');state.losses=0;await wait(200);
+ state.error='Erreur synthétique';await wait(200);check(document.querySelector('#capture-feedback').dataset.tone==='error'&&document.querySelector('#capture-label').textContent==='Capture à vérifier','Erreur de capture visible avec diagnostic au clic');state.error=null;state.live=false;await wait(200);
+ check(document.querySelector('#capture-label').textContent==='Replay local'&&!document.querySelector('#packet-feedback').classList.contains('receiving'),'Replay clairement identifié sans activité live');
+ window.uiTest={state,choose,passed};
+ result.textContent=passed.join('\n')+'\nPASS — test UI synthétique, pas une preuve en jeu';
+}catch(error){result.textContent=passed.join('\n')+'\nFAIL: '+error.message;console.error(error);}
+</script></html>

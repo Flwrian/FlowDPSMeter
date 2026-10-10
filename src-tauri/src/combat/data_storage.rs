@@ -353,6 +353,7 @@ impl TargetCombatData {
 // ───── Main storage ─────
 
 pub struct DataStorage {
+    party_feed: RwLock<Option<Vec<crate::party::Signal>>>,
     inner: RwLock<Inner>,
     damage_generation: AtomicI64,
     /// Wall-clock ms of the last damage record — gates the zone-change lull check.
@@ -507,8 +508,22 @@ struct LootIdentity {
 }
 
 impl DataStorage {
+    pub fn enable_party_feed(&self) { *self.party_feed.write() = Some(Vec::new()); }
+    pub fn take_party_signals(&self) -> Vec<crate::party::Signal> {
+        self.party_feed.write().as_mut().map(std::mem::take).unwrap_or_default()
+    }
+    fn emit_party(&self, signal: crate::party::Signal) {
+        if let Some(feed) = self.party_feed.write().as_mut() { feed.push(signal); }
+    }
+    pub fn authoritative_names(&self) -> HashMap<i32,String> {
+        let inner = self.inner.read();
+        inner.nickname_storage.iter().filter(|(id,_)| inner.authoritative_name_ids.contains(id))
+            .map(|(&id,name)| (id,name.clone())).collect()
+    }
+    pub fn actor_job(&self, id:i32) -> Option<JobClass> { self.inner.read().actor_jobs.get(&id).copied() }
     pub fn new() -> Self {
         Self {
+            party_feed: RwLock::new(None),
             inner: RwLock::new(Inner {
                 target_combat: HashMap::new(),
                 actor_jobs: HashMap::new(),
@@ -576,6 +591,7 @@ impl DataStorage {
                 return false; // nothing to clear
             }
         }
+        self.emit_party(crate::party::Signal::Boundary("Changement de zone".into(), now));
         self.last_zone_reset_ms.store(now, Ordering::Relaxed);
         self.run_before_reset();
         // Preserve identity across the reset: a teleport within the same instance
@@ -899,6 +915,22 @@ impl DataStorage {
             inner.despawned_summon_ids.remove(&actor_id);
         }
 
+        let friendly = is_friendly_action(&inner, actor_id, target_id);
+        if pdp.total_damage() > 0 && !crate::entity::skill_group::restores_resource(skill_code) {
+            self.emit_party(crate::party::Signal::Event(crate::party::CombatEvent {
+                timestamp: pdp.timestamp(), source: actor_id, target: target_id, skill: skill_code,
+                amount: pdp.total_damage() as i64,
+                kind: if friendly { crate::party::EventKind::Heal } else { crate::party::EventKind::Damage },
+                periodic: pdp.is_dot(), critical: pdp.is_crit(), impacts: 1 + pdp.multi_hit_count().max(0) as u32,
+            }));
+        }
+        if pdp.heal_amount() > 0 {
+            self.emit_party(crate::party::Signal::Event(crate::party::CombatEvent {
+                timestamp: pdp.timestamp(), source: actor_id, target: actor_id, skill: skill_code,
+                amount: pdp.heal_amount() as i64, kind: crate::party::EventKind::Heal,
+                periodic: false, critical: false, impacts: 1,
+            }));
+        }
         // NPC actors using NPC skills: track damage received on the player target, then skip
         let uses_npc_skill = (1_000_000..=9_999_999).contains(&skill_code);
         if inner.mob_storage.contains_key(&actor_id)
@@ -1049,6 +1081,10 @@ impl DataStorage {
     }
 
     pub fn mark_entity_dead(&self, entity_id: i32) {
+        self.emit_party(crate::party::Signal::Event(crate::party::CombatEvent {
+            timestamp: now_ms(), source: entity_id, target: entity_id, skill: 0, amount: 0,
+            kind: crate::party::EventKind::Death, periodic: false, critical: false, impacts: 0,
+        }));
         let mut inner = self.inner.write();
         inner.dead_entity_ids.insert(entity_id);
         inner.hp_floored_ids.remove(&entity_id);
@@ -1154,7 +1190,11 @@ impl DataStorage {
     /// record this parser trips over costs that member a refresh rather than
     /// costing the whole party their combat power.
     pub fn set_party_roster(&self, members: Vec<(String, PartyMember)>, complete: bool) {
-        if members.is_empty() {
+        self.emit_party(crate::party::Signal::Roster(members.iter().map(|(name,m)| crate::party::Member {
+            key: if m.dbid != 0 { format!("party:{}",m.dbid) } else { format!("member:{name}") },
+            name: name.clone(), class: crate::party::class_label(m.job), present: true, local: false,
+        }).collect(), complete, now_ms()));
+        if members.is_empty() && !complete {
             return;
         }
         let mut inner = self.inner.write();
@@ -1319,7 +1359,8 @@ impl DataStorage {
     }
 
     /// Bind a nickname from an AUTHORITATIVE source (a masked identity record, a
-    /// 45/44 36 player spawn, or the account char-list). Not gated — the id↔name
+    /// 45/44 36 player spawn, contiguous ownership/loot record, or the account
+    /// char-list). Not gated — the id↔name
     /// pairing is stated by the protocol — and marks the id so fuzzy parsers
     /// can't later steal the name. A stale/junk prior binding of this name is
     /// evicted, reclaiming the name to the real id.
@@ -1447,10 +1488,17 @@ impl DataStorage {
     /// Record a heal tick done by `actor_id` with `skill_code` (is_hot marks a HoT).
     /// Keyed by the healer so "healing done" can be shown per player. Self-heals count.
     pub fn append_heal(&self, actor_id: i32, skill_code: i32, amount: i64, is_hot: bool) {
+        self.append_heal_to(actor_id, actor_id, skill_code, amount, is_hot);
+    }
+    pub fn append_heal_to(&self, actor_id: i32, target_id: i32, skill_code: i32, amount: i64, is_hot: bool) {
         if amount <= 0 || !self.is_plausible_entity_id(actor_id) {
             return;
         }
         let mut inner = self.inner.write();
+        self.emit_party(crate::party::Signal::Event(crate::party::CombatEvent {
+            timestamp: now_ms(), source: actor_id, target: target_id, skill: skill_code, amount,
+            kind: crate::party::EventKind::Heal, periodic: is_hot, critical: false, impacts: 1,
+        }));
         let e = inner
             .heal_storage
             .entry(actor_id)

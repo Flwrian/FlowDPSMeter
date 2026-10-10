@@ -469,8 +469,9 @@ impl StreamProcessor {
             // is the gate). HoT = 0x0B. This runs on framed perfect packets only, so
             // there is no embedded over-read into adjacent records (the artifact that
             // produced bogus multi-million single-tick "heals" in offline scans).
-            self.data_storage.append_heal(
+            self.data_storage.append_heal_to(
                 actor_info.value,
+                target_info.value,
                 skill_code,
                 amount_info.value as i64,
                 effect_type == 0x0B,
@@ -479,7 +480,10 @@ impl StreamProcessor {
         }
 
         // Damage DoT: gated by the curated dot-skill allowlist.
-        if !self.dot_damage_skill_ids.contains(&skill_code) {
+        let hostile_npc_tick=self.data_storage.is_mob(actor_info.value)
+            && !self.data_storage.is_summon(actor_info.value)
+            && self.data_storage.is_known_player(target_info.value);
+        if !self.dot_damage_skill_ids.contains(&skill_code) && !hostile_npc_tick {
             tracing::trace!("DOT: skill {} not in dot_ids (set size={})", skill_code, self.dot_damage_skill_ids.len());
             return;
         }
@@ -623,7 +627,11 @@ impl StreamProcessor {
             if self.data_storage.is_confirmed_summon(summon_id) {
                 self.data_storage.append_summon(owner_id, summon_id);
             }
-            self.data_storage.append_nickname(owner_id, name);
+            if r.authoritative {
+                self.data_storage.append_nickname_authoritative(owner_id, name);
+            } else {
+                self.data_storage.append_nickname(owner_id, name);
+            }
             self.data_storage.note_player_server(name, r.server_id);
             // For a mob that was fought (it follows the mob's `35 38` despawn)
             // this is the loot owner, which so far has always been you.
@@ -1362,10 +1370,9 @@ impl StreamProcessor {
                 break;
             }
 
-            // Skip 7-digit NPC skills
-            if (1_000_000..=9_999_999).contains(&exact_skill_code) {
-                break;
-            }
+            // NPC skills use this same hit layout. The old DPS-only decoder
+            // skipped them, discarding incoming monster hits before the party
+            // engine could account for their player recipients.
 
             // Skip 1-byte UID field
             if offset < packet.len() {
@@ -1679,7 +1686,7 @@ impl StreamProcessor {
                 // it as healing makes the HEAL view capture instant self-heals, not just
                 // HoTs. (The cast-marker variant breaks out earlier on its and_result.)
                 self.data_storage
-                    .append_heal(actor_value, resolved_skill_code, final_damage as i64, false);
+                    .append_heal_to(actor_value, target_value, resolved_skill_code, final_damage as i64, false);
             }
 
             parsed_any = true;
@@ -2432,6 +2439,9 @@ struct Ownership {
     server_id: u16,
     name: String,
     field: std::ops::Range<usize>,
+    /// Exact contiguous id/server/name layout; a wider fuzzy scan cannot
+    /// establish an identity for party attribution.
+    authoritative: bool,
 }
 
 /// Every `04 8D` record in `data` that names its owner, as
@@ -2500,7 +2510,10 @@ fn ownership_records(data: &[u8]) -> Vec<Ownership> {
                 continue;
             }
             if let Some(name) = exact_name(&data[name_len_idx + 1..name_end]) {
-                found = Some(Ownership { summon_id, owner_id, server_id, name, field: name_len_idx + 1..name_end });
+                let direct_owner=read_varint(data,after_fixed);
+                let authoritative=direct_owner.length>0 && direct_owner.value==owner_id
+                    && after_fixed+direct_owner.length as usize==server_idx;
+                found = Some(Ownership { summon_id, owner_id, server_id, name, field: name_len_idx + 1..name_end,authoritative });
                 break;
             }
         }
@@ -2700,6 +2713,10 @@ struct Roster {
 }
 
 /// Every party roster in `data`.
+pub fn has_valid_party_roster(data:&[u8])->bool {
+    rosters(data).iter().any(|r|r.complete && !r.members.is_empty())
+}
+
 fn rosters(data: &[u8]) -> Vec<Roster> {
     let mut out = Vec::new();
     if data.len() < 32 {
@@ -3471,8 +3488,8 @@ mod tests {
 
     /// The flags only monsters' hits on players show in the captures of
     /// 2026-10-04 (`<target> 06 00 <actor> <skill> <uid> <hit type>`, then the
-    /// plotter). The parser leaves these records out; the plotter is read
-    /// the same way.
+    /// plotter). Incoming NPC hits share the damage layout and the plotter
+    /// is read the same way.
     #[test]
     fn hit_flags_of_received_hits() {
         let plotter = |record: &str, at: usize| {
