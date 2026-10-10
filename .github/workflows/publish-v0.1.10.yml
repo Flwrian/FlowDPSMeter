@@ -1,0 +1,76 @@
+name: Publish verified v0.1.10
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-v0.1.10.yml']
+permissions:
+  contents: read
+concurrency:
+  group: publish-v0.1.10
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'Flwrian/FlowDPSMeter' && github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Verify existing build and publish its draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # This job publishes only the already built version explicitly requested.
+          # It never creates tags, rebuilds files or changes published assets.
+          $version = '0.1.10'
+          $tag = "v$version"
+          $sourceCommit = '2304f38f381d2e8a5a79318566cd28691ed4c7f9'
+          $buildRunId = '38063544840'
+          $api = "https://api.github.com/repos/$env:GITHUB_REPOSITORY"
+          $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept = 'application/vnd.github+json'
+              'X-GitHub-Api-Version' = '2026-03-10'
+          }
+          $commit = Invoke-RestMethod "$api/commits/$tag" -Headers $headers
+          if ($commit.sha -ne $sourceCommit) { throw 'Release tag does not match the reviewed source commit.' }
+          $build = Invoke-RestMethod "$api/actions/runs/$buildRunId" -Headers $headers
+          if ($build.status -ne 'completed' -or $build.conclusion -ne 'success' -or $build.head_sha -ne $sourceCommit -or $build.head_branch -ne $tag -or $build.path -ne '.github/workflows/release-build.yml') {
+              throw 'The expected tagged release build has not succeeded.'
+          }
+          $jobs = Invoke-RestMethod "$api/actions/runs/$buildRunId/jobs" -Headers $headers
+          $draftSteps = @($jobs.jobs.steps | Where-Object { $_.name -eq 'Prepare draft release' -and $_.conclusion -eq 'success' })
+          if ($draftSteps.Count -ne 1) { throw 'Draft asset upload and digest verification did not succeed.' }
+          $release = Invoke-RestMethod "$api/releases/tags/$tag" -Headers $headers
+          if ($release.tag_name -ne $tag -or $release.prerelease) { throw 'Unexpected release.' }
+          $expected = @('Windows-x64', 'Update-Windows-x64', 'Sources') | ForEach-Object { "AionPartyMeter-$version-$_.zip" }
+          if (@($release.assets).Count -ne $expected.Count) { throw 'Unexpected release asset count.' }
+          foreach ($name in $expected) {
+              $assets = @($release.assets | Where-Object name -eq $name)
+              if ($assets.Count -ne 1) { throw "Missing or duplicate archive: $name" }
+              $asset = $assets[0]
+              if ($asset.state -ne 'uploaded' -or $asset.size -le 0 -or $asset.digest -cnotmatch '^sha256:[a-f0-9]{64}$' -or $asset.browser_download_url -ne "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$name") {
+                  throw "Archive verification failed: $name"
+              }
+              Write-Host "$name : $($asset.size) bytes, $($asset.digest)"
+          }
+          if (!$release.draft) {
+              Write-Host "Already published; preserving release: $($release.html_url)"
+              exit 0
+          }
+          $notes = @'
+          Combat + affiche les degats, soins et degats recus ensemble sur chaque ligne, avec totaux et taux par seconde. Les barres par classe, le tri, les details et les graphiques sont conserves. La capture et la detection automatique restent inchangees.
+
+          Telecharger AionPartyMeter-0.1.10-Windows-x64.zip, extraire tout, ouvrir DEMARRER.exe puis choisir Combat +. Le ZIP Update est reserve au lanceur ; les sources GPL sont jointes.
+
+          Validation : 26 tests JavaScript, 83 controles d'interface synthetiques et compilation Windows x64 reussis. Aucun nouveau combat reel n'est revendique.
+          '@
+          $body = @{ name = "AionPartyMeter $version - Combat +"; body = $notes; draft = $false; prerelease = $false; make_latest = 'true' } | ConvertTo-Json
+          $published = Invoke-RestMethod -Method Patch "$api/releases/$($release.id)" -Headers $headers -ContentType 'application/json' -Body $body
+          if ($published.draft -or $published.prerelease -or $published.tag_name -ne $tag -or !$published.published_at) { throw 'Publication was not confirmed.' }
+          $latest = Invoke-RestMethod "$api/releases/latest" -Headers $headers
+          if ($latest.id -ne $published.id) { throw 'Published version is not the latest release.' }
+          Write-Host "Published latest release: $($published.html_url)"
