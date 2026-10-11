@@ -137,3 +137,11 @@ Les aperçus sont marqués TEST et utilisent des statistiques synthétiques. La 
 - Les 93 fichiers Rust correspondent aux empreintes avant refonte : aucune modification de capture ou détection.
 - Publication limitée à v0.1.12 depuis le workflow de compilation existant, avec ses permissions déjà présentes : trois archives locales comparées aux empreintes SHA-256 et tailles des fichiers GitHub avant publication stable.
 - Ces vérifications sont synthétiques et locales ; aucune nouvelle preuve en combat réel ou mesure comparative de CPU.
+## Version 0.1.13 — PV de la cible
+
+- 30 tests JavaScript réussis, dont cible suivie/sélectionnée, données partielles, mort et import d’anciens rapports.
+- 194 tests Rust réussis (146 unitaires, 22 groupe/replay, 26 pipeline TCP/protocole). Les nouveaux scénarios utilisent des paquets PV 1B 92, fragmentation et retransmission ; ils vérifient les PV sans deviner le maximum, les remontées de PV, le zéro à la mort, l’historique figé et le nettoyage en changement de zone/apparition.
+- 143 contrôles UI synthétiques réussis : 85 statistiques/groupe, 39 commandes et fenêtres, 19 PV. PV visibles dans les six vues, lisibles à 320 pixels, pourcentage supprimé lorsque le maximum manque, filtre indépendant de la capture et du groupe.
+- Compilation TypeScript/Vite réussie. La petite barre de vie ajoute 20 px aux tailles recommandées ; quatre membres restent visibles en Combat à 360 × 312 et Combat + à 400 × 360.
+- Les nouveaux champs JSON sont facultatifs ; les anciens rapports n’inventent pas de PV. Les chiffres sont les dernières lectures du protocole, jamais le maximum observé ou les PV max moins les seuls dégâts de la party.
+- Publication demandée pour v0.1.13 uniquement : le workflow vérifie taille et SHA-256 des trois archives avant publication stable. Aucune nouvelle vérification en combat réel revendiquée.

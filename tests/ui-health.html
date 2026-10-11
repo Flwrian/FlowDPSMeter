@@ -1,0 +1,52 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>PV de cible — TEST synthétique</title>
+<style>body{width:400px}#app,.shell{height:360px}#health-result{white-space:pre-wrap;background:#14271e;color:#b8dec8;padding:10px;font:12px monospace}</style>
+<div id="app"></div><pre id="health-result">Contrôles PV en cours…</pre>
+<script type="module">
+const fixture=await (await fetch('./ui-fixture.json')).json();
+fixture.targets=[{id:800,name:'Boss synthétique',currentHp:2200000,maxHp:5000000},{id:801,name:'Autre cible',currentHp:250,maxHp:1000}];
+fixture.trackedTarget=800;fixture.active=true;
+const settings={compact:true,opacity:.96,alwaysOnTop:true,width:400,height:360,x:0,y:0,preferredDevice:null,manualParty:null};
+const commands=[];
+localStorage.setItem('apm-layout','combat-all');localStorage.setItem('apm-combat-layout-applied','true');localStorage.setItem('apm-compact','true');localStorage.setItem('apm-refresh-rate','10');localStorage.setItem('apm-overview','false');
+window.isTauri=true;
+window.__TAURI_INTERNALS__={invoke:async(command,args)=>{
+ commands.push(command);
+ if(command==='dashboard')return {snapshot:structuredClone(fixture),settings,partyMembers:fixture.members.map(r=>({member:r.member,identityConfirmed:true})),rosterUpdates:1,observedPlayers:[],groupTimeline:[],dataDirectory:'TEST synthétique',persistenceError:null,diagnostics:{mode:'replay',status:'TEST',error:null,npcap:true,administrator:false,devices:[],selectedDevice:null,connection:null,packets:0,parsed:0,duplicates:0,losses:0,recording:null,fixture:true}};
+ if(command==='select_target'){fixture.selectedTarget=args.target;return;}
+ if(command==='window_geometry')return {x:0,y:0,width:400,height:360,scale:1};
+ if(command==='window_transform'){size(args.geometry.width,args.geometry.height);return;}
+ if(command==='compact_set'){settings.compact=args.compact;return;}
+ throw Error('Commande inattendue : '+command);
+}};
+function size(w,h){document.body.style.width=w+'px';document.querySelector('#app').style.height=h+'px';const shell=document.querySelector('.shell');if(shell)shell.style.height=h+'px';}
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const settle=async predicate=>{const end=performance.now()+2500;while(!predicate()&&performance.now()<end)await wait(20);if(!predicate())throw Error('Valeur PV attendue non reçue');};
+const results=[];const check=(ok,label)=>{if(!ok)throw Error(label);results.push('✓ '+label);};
+await import('../src/main.ts');
+const health=()=>document.querySelector('.shell').dataset.layout==='combat'||document.querySelector('.shell').dataset.layout==='combat-all'?document.querySelector('.combat-health'):document.querySelector('#target-health');
+const choose=async value=>{const el=document.querySelector('#display-layout');el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));await settle(()=>document.querySelector('.shell').dataset.layout===value);await wait(150);};
+try{
+ await settle(()=>health()?.textContent.includes('44 %'));
+ check(health().textContent.replace(/\s/g,'').includes('2200000/5000000PV'),'PV actuels et maximum précis, séparés des dégâts');
+ check(health().textContent.includes('Boss synthétique')&&health().dataset.known==='true','Toutes les cibles : suivi de la dernière cible du groupe');
+ fixture.targets[0].currentHp=1000000;await settle(()=>health().textContent.includes('20 %'));
+ check(health().style.getPropertyValue('--target-hp')==='20%','Mise à jour de la barre à partir de la lecture réseau');
+ const select=document.querySelector('#combat-target');select.value='801';select.dispatchEvent(new Event('change',{bubbles:true}));await settle(()=>health().textContent.includes('25 %'));
+ check(health().textContent.includes('Autre cible'),'Sélection explicite : PV de la cible choisie');
+ fixture.targets[1].currentHp=0;await settle(()=>health().textContent.includes('0 %'));
+ check(health().textContent.includes('0 / 1'),'Mort : vrai zéro, sans faux inconnu');
+ fixture.targets[1].maxHp=null;await settle(()=>health().dataset.known==='false');
+ check(health().textContent.includes('0 / — PV')&&!health().querySelector('.target-hp-percent').textContent,'Maximum absent : tiret et aucun pourcentage estimé');
+ fixture.targets[1].currentHp=null;await settle(()=>health().textContent.includes('— / — PV'));
+ check(health().querySelector('.target-hp-track').getAttribute('aria-hidden')==='true','PV inconnus signalés sans barre pleine');
+ fixture.selectedTarget=null;fixture.targets[0].currentHp=2200000;
+ for(const layout of ['combat','combat-all','band','cards','panels','full']){
+  await choose(layout);await settle(()=>health().textContent.includes('44 %'));
+  const el=health();check(el.getBoundingClientRect().height>0&&el.textContent.includes('Boss synthétique'),layout+' : PV visibles');
+  if(layout!=='panels'){size(320,420);await wait(40);check(el.scrollWidth<=el.clientWidth+1,layout+' : PV sans débordement à 320 px');}
+ }
+ check(!commands.some(c=>/party_|capture_|new_combat/.test(c)),'Afficher et choisir les PV ne modifie ni capture ni groupe');
+ await choose('combat-all');size(400,360);fixture.active=false;
+ document.querySelector('#health-result').textContent=results.join('\n')+'\nPASS — PV synthétiques, aucune preuve en jeu';
+}catch(error){document.querySelector('#health-result').textContent=results.join('\n')+'\nFAIL : '+error.message;}
+</script></html>

@@ -20,6 +20,42 @@ fn actual_parser_preserves_ally_heal_recipient_and_multihit_damage(){
  let heal=s.members.iter().find(|r|r.member.name=="Heal").unwrap();assert_eq!(heal.totals.healing,7351);assert_eq!(heal.totals.damage,0);
  assert_eq!(s.members.iter().find(|r|r.member.name=="DPS").unwrap().skills[0].impacts,3);
 }
+fn hp_frame(id:u32,current:u32,max:u32)->Vec<u8>{
+ let mut body=vec![0x1b,0x92];body.extend(varint(id));body.extend(varint(current));body.extend(varint(max));frame(&body)
+}
+#[test]
+fn protocol_hp_is_preserved_without_guessing_max_and_with_frozen_history(){
+ let mut p=setup();let d=damage();p.feed(&payload(d.clone(),100,1000));
+ p.storage.set_mob_current_hp(30001,600);p.drain_signals();
+ let s=p.dashboard_snapshot(1000,None);let t=&s.targets[0];
+ assert_eq!(t.current_hp,Some(600));assert_eq!(t.max_hp,None);assert_eq!(s.tracked_target,Some(30001));
+ let hp=hp_frame(30001,400,1000);let seq=100+d.len()as u32;
+ // Actual HP packet, fragmented then retransmitted, using the live/replay pipeline.
+ p.feed(&payload(hp[..4].to_vec(),seq,1500));p.feed(&payload(hp[4..].to_vec(),seq+4,1500));
+ p.feed(&payload(hp.clone(),seq,1600));
+ let s=p.dashboard_snapshot(2000,None);assert_eq!(s.targets[0].current_hp,Some(400));assert_eq!(s.targets[0].max_hp,Some(1000));
+ assert_eq!(s.totals.damage,1700);assert_eq!(p.duplicates(),1);
+ let mut replay=setup();replay.feed(&payload(d,100,1000));replay.feed(&payload(hp,seq,1500));
+ let r=replay.snapshot(2000);assert_eq!(s.targets[0].current_hp,r.targets[0].current_hp);assert_eq!(s.targets[0].max_hp,r.targets[0].max_hp);
+ p.engine.select_target(Some(30001));p.engine.death(30001,2100);
+ let archived=p.take_finished();assert_eq!(archived[0].targets[0].current_hp,Some(0));
+ p.storage.set_mob_current_hp(30001,900);p.drain_signals();
+ assert_eq!(p.snapshot(2200).targets[0].current_hp,Some(0),"archived HP must not follow live readings");
+ let mut old=serde_json::to_value(&archived[0]).unwrap();old.as_object_mut().unwrap().remove("trackedTarget");
+ for target in old["targets"].as_array_mut().unwrap(){target.as_object_mut().unwrap().remove("currentHp");target.as_object_mut().unwrap().remove("maxHp");}
+ let legacy: a2tools_dps_meter_lib::party::Snapshot=serde_json::from_value(old).unwrap();
+ assert_eq!(legacy.targets[0].current_hp,None);assert_eq!(legacy.tracked_target,None);
+}
+#[test]
+fn hp_updates_include_healing_and_clear_on_zone_or_new_spawn(){
+ let mut p=setup();let d=damage();p.feed(&payload(d.clone(),100,1000));
+ let hp=hp_frame(30001,400,1000);p.feed(&payload(hp.clone(),100+d.len()as u32,1100));
+ let healed=hp_frame(30001,700,1000);p.feed(&payload(healed,100+d.len()as u32+hp.len()as u32,1200));
+ assert_eq!(p.snapshot(1200).targets[0].current_hp,Some(700));
+ p.storage.append_mob(30001,1);p.drain_signals();assert_eq!(p.snapshot(1250).targets[0].current_hp,None);
+ p.storage.append_mob_hp(30001,2000);p.storage.set_mob_current_hp(30001,1800);p.drain_signals();
+ p.storage.flush_combat_only();p.drain_signals();assert_eq!(p.snapshot(1300).targets[0].max_hp,None);
+}
 #[test]
 fn fragmented_compressed_retransmitted_stream_matches_complete_stream(){
  let mut inner=damage();inner.extend(ally_heal());let compressed=lz4_flex::compress(&inner);

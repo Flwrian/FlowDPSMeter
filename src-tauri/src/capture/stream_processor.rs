@@ -540,6 +540,9 @@ impl StreamProcessor {
         // Always store HP — the entity may not be in mob_data yet if spawn
         // packet arrived before the capture started
         self.data_storage.append_mob_hp(actor_id, hp_max_info.value);
+        if hp_info.value >= 0 && hp_info.value <= hp_max_info.value {
+            self.data_storage.set_mob_current_hp(actor_id, hp_info.value);
+        }
 
         true
     }
@@ -1135,6 +1138,7 @@ impl StreamProcessor {
                                 let max_hp = read_varint(packet, hp_scan + 1 + current_hp.length as usize);
                                 if max_hp.length > 0 && max_hp.value >= current_hp.value {
                                     self.data_storage.append_mob_hp(real_actor_id, max_hp.value);
+                                    self.data_storage.set_mob_current_hp(real_actor_id, current_hp.value);
                                     break;
                                 }
                             }

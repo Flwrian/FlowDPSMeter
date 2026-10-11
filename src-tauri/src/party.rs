@@ -103,7 +103,13 @@ pub struct PartyMemberStatus {pub member:Member,pub identity_confirmed:bool}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Target { pub id: i32, pub name: String }
+pub struct Target {
+    pub id: i32, pub name: String,
+    #[serde(default)] pub current_hp: Option<i64>,
+    #[serde(default)] pub max_hp: Option<i64>,
+}
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct TargetHealth { pub current_hp: Option<i64>, pub max_hp: Option<i64> }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -118,6 +124,7 @@ pub struct Snapshot {
     pub totals: Totals,
     pub targets: Vec<Target>,
     pub selected_target: Option<i32>,
+    #[serde(default)] pub tracked_target: Option<i32>,
     pub warnings: Vec<String>,
 }
 
@@ -136,6 +143,7 @@ enum Projection { Summary, Timeline, Full }
 pub struct PartyEngine {
     members: BTreeMap<String, Member>,
     identity: Identity,
+    target_health: HashMap<i32, TargetHealth>,
     // Preserve aliases through an encounter, but never across a zone change.
     bindings: HashMap<i32, String>,
     active: Option<Encounter>,
@@ -153,7 +161,7 @@ impl Default for PartyEngine {
 
 impl PartyEngine {
     pub fn new() -> Self {
-        Self { members: BTreeMap::new(), identity: Identity::default(), bindings: HashMap::new(),
+        Self { members: BTreeMap::new(), identity: Identity::default(), target_health: HashMap::new(), bindings: HashMap::new(),
             active: None, last_snapshot: None, pending: vec![], finished: vec![], selected_target: None,
             transport_incomplete: false, snapshot_cache: RefCell::new(None) }
     }
@@ -174,6 +182,12 @@ impl PartyEngine {
                 self.pending.push(entry);
             }
         }
+    }
+
+    pub fn sync_target_health(&mut self, readings: HashMap<i32, TargetHealth>) {
+        // The projection cache contains accounting only. HP is patched below,
+        // so HP-only updates never rebind members or recalculate combat totals.
+        self.target_health = readings;
     }
 
     fn ensure_local(&mut self) {
@@ -301,6 +315,7 @@ impl PartyEngine {
 
     pub fn death(&mut self, target: i32, timestamp: i64) {
         if self.active.is_none() { return; }
+        self.target_health.entry(target).or_default().current_hp = Some(0);
         let eligible = self.active.as_ref().unwrap().members.keys().cloned().collect();
         // Boss deaths are relevant even though the boss isn't a member.
         self.accept(CapturedEvent { event: CombatEvent { timestamp, source: target, target, skill: 0,
@@ -324,6 +339,7 @@ impl PartyEngine {
             self.snapshot_cache.get_mut().take();
             let mut snap = self.snapshot(timestamp);
             self.selected_target=selected;
+            snap.tracked_target = selected.or(snap.tracked_target);
             snap.active = false;
             snap.end_reason = Some(reason.into());
             self.finished.push(snap.clone());
@@ -340,6 +356,7 @@ impl PartyEngine {
         self.pending.clear();
         self.bindings.clear();
         self.identity = Identity::default();
+        self.target_health.clear();
         self.members.clear();
         self.selected_target = None;
     }
@@ -390,6 +407,14 @@ impl PartyEngine {
                 row.totals.hps = row.totals.healing as f64 / snapshot.duration;
             }
         }
+        if snapshot.active {
+            for target in &mut snapshot.targets {
+                if let Some(hp) = self.target_health.get(&target.id) {
+                    target.current_hp = hp.current_hp;
+                    target.max_hp = hp.max_hp;
+                }
+            }
+        }
         snapshot
     }
 
@@ -413,6 +438,8 @@ impl PartyEngine {
         let mut skills: HashMap<String, BTreeMap<(i32,String,bool), SkillStats>> = HashMap::new();
         let mut points: HashMap<String,BTreeMap<i64,Point>> = HashMap::new();
         let mut targets = BTreeMap::new();
+        let mut latest_target = None;
+        let mut latest_target_time = i64::MIN;
         let mut warnings = vec![];
         let mut unresolved = 0;
         let mut seen_deaths = HashSet::new();
@@ -453,6 +480,7 @@ impl PartyEngine {
                     if let Some(key) = &source { add(key,"heal",e.amount); if let Some(key) = &target { add(key,"receivedHeal",e.amount); } }
                 } else {
                     if let Some(key) = &source {
+                        if e.timestamp >= latest_target_time { latest_target = Some(e.target); latest_target_time = e.timestamp; }
                         targets.insert(e.target, self.identity.targets.get(&e.target).cloned().unwrap_or_else(|| format!("Cible #{}",e.target)));
                         if self.selected_target.is_none() || self.selected_target == Some(e.target) { add(key,"damage",e.amount); }
                     }
@@ -480,7 +508,8 @@ impl PartyEngine {
         }
         Snapshot { schema_version:1, id:started.map(|s|format!("combat-{s}")).unwrap_or_default(), started_at:started,
             duration, active:self.active.is_some(), end_reason:None, members:rows.into_values().collect(), totals,
-            targets:targets.into_iter().map(|(id,name)|Target{id,name}).collect(), selected_target:self.selected_target, warnings }
+            targets:targets.into_iter().map(|(id,name)|Target{id,name,current_hp:None,max_hp:None}).collect(),
+            tracked_target:self.selected_target.or(latest_target), selected_target:self.selected_target, warnings }
     }
 }
 

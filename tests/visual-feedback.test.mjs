@@ -6,7 +6,7 @@ const uri=text=>'data:text/javascript;base64,'+Buffer.from(text).toString('base6
 const compile=name=>ts.transpileModule(readFileSync(new URL('../src/'+name,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2020}}).outputText;
 const feedback=await import(uri(compile('capture-feedback.ts')));
 const layout=await import(uri(compile('visual-layout.ts').replace("'./compact-meter'",JSON.stringify(uri('export const renderCompact=()=>{};export const metricCell=()=>{};export const memberRate=()=>0;'))).replace("'./combat-meter'",JSON.stringify(uri('export const renderCombat=()=>{};'))).replace("'./view-dom'",JSON.stringify(uri('export const patchText=()=>{};')))));
-const combat=await import(uri(compile('combat-meter.ts').replace("'./view-dom'",JSON.stringify(uri('export const patchText=()=>{};')))));
+const combat=await import(uri(compile('combat-meter.ts').replace("'./target-health'",JSON.stringify(uri('export const renderTargetHealth=()=>{};'))).replace("'./view-dom'",JSON.stringify(uri('export const patchText=()=>{};')))));
 const diag=(patch={})=>({mode:'live',npcap:true,connection:'flow1',packets:100,losses:0,error:null,...patch});
 const snapshot=(patch={})=>({active:false,startedAt:null,warnings:[],...patch});
 const members=[{member:{name:'Me',local:true},identityConfirmed:true},{member:{name:'Healer'},identityConfirmed:false}];
@@ -46,10 +46,10 @@ test('capture search, errors, replay and combat states are distinguishable',()=>
 });
 test('layout preference validates stored values; sizes are bounded for large groups',()=>{
  assert.equal(layout.readLayout('cards'),'cards');assert.equal(layout.readLayout('panels'),'panels');assert.equal(layout.readLayout('broken'),'combat');
- assert.deepEqual(layout.layoutSize('band',4),{width:400,height:256});assert.deepEqual(layout.layoutSize('cards',4),{width:460,height:324});assert.deepEqual(layout.layoutSize('panels',4),{width:780,height:344});
+ assert.deepEqual(layout.layoutSize('band',4),{width:400,height:276});assert.deepEqual(layout.layoutSize('cards',4),{width:460,height:344});assert.deepEqual(layout.layoutSize('panels',4),{width:780,height:364});
  assert.equal(layout.layoutSize('cards',100).height,620);assert.equal(layout.layoutSize('band',0).height,200);
- assert.deepEqual(layout.layoutSize('combat',4),{width:360,height:292});assert.equal(layout.layoutSize('combat',100).height,560);
- assert.equal(layout.readLayout('combat-all'),'combat-all');assert.deepEqual(layout.layoutSize('combat-all',4),{width:400,height:340});assert.equal(layout.layoutSize('combat-all',100).height,560);
+ assert.deepEqual(layout.layoutSize('combat',4),{width:360,height:312});assert.equal(layout.layoutSize('combat',100).height,560);
+ assert.equal(layout.readLayout('combat-all'),'combat-all');assert.deepEqual(layout.layoutSize('combat-all',4),{width:400,height:360});assert.equal(layout.layoutSize('combat-all',100).height,560);
 });
 test('Combat is adopted once; explicit alternative layouts and later choices survive',()=>{
  assert.equal(layout.adoptCombat(null,false),true);assert.equal(layout.adoptCombat('band',false),true);

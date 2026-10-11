@@ -4,7 +4,7 @@ Application Windows x64 en français pour les statistiques du **groupe entier** 
 
 ## Lancer
 
-1. Extraire tout `AionPartyMeter-0.1.12-Windows-x64.zip`, puis ouvrir **DEMARRER.exe**. Le lanceur vérifie les nouvelles versions stables sur GitHub, puis les dépendances. Les DLL Visual C++ requises et l’installateur WebView2 hors ligne sont fournis ; aucun outil de développement n’est nécessaire. Lire `LIRE-MOI.html` dans le pack ou `docs/INSTALLATION.md`.
+1. Extraire tout `AionPartyMeter-0.1.13-Windows-x64.zip`, puis ouvrir **DEMARRER.exe**. Le lanceur vérifie les nouvelles versions stables sur GitHub, puis les dépendances. Les DLL Visual C++ requises et l’installateur WebView2 hors ligne sont fournis ; aucun outil de développement n’est nécessaire. Lire `LIRE-MOI.html` dans le pack ou `docs/INSTALLATION.md`.
 2. Installer [Npcap](https://npcap.com/#download) si le diagnostic le signale absent. Le chargement prend en charge son dossier standard `System32\Npcap` et le mode compatible WinPcap. Le pilote n’est pas embarqué ni installé automatiquement.
 3. Cliquer **Démarrer**. Si Npcap refuse l’accès, fermer l’application et la lancer en administrateur.
 4. Ouvrir **Groupe** dans la barre de commandes : la liste des joueurs découverts est actualisée en direct. Cliquer **+** sur un coéquipier ou saisir son pseudo exact puis Entrée, sans quitter le groupe. Si la liste réseau est décodée, les membres sont ajoutés automatiquement. Une identité non encore reçue reste signalée, même sans dégâts.

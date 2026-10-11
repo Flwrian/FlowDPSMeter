@@ -176,7 +176,7 @@ try{
  check(document.querySelectorAll('.combat-row').length===4&&document.querySelectorAll('.combat-class svg').length===4,'Combat : tous les membres avec leurs symboles de classe');
  check(document.querySelector('.combat-row').textContent.includes('Aster')&&document.querySelector('.combat-row .combat-share').textContent.endsWith('%'),'Combat : dégâts, DPS et contribution alignés, tri par dégâts');
  check(document.querySelector('#combat-data').textContent==='TEST'&&document.querySelector('#combat-capture').textContent==='Replay'&&document.querySelector('#combat-roster').textContent==='4/4','Combat : replay synthétique et identités réelles clairement signalés');
- check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat : les quatre membres visibles à 360 × 292');
+ check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat : les quatre membres visibles à 360 × 312');
  const combatRow=document.querySelector('.combat-row');combatRow.focus();state.bump=100;await wait(350);
  check(document.querySelector('.combat-row')===combatRow&&document.activeElement===combatRow,'Combat : lignes et focus préservés pendant les mises à jour');state.bump=0;
  document.querySelector('[data-compact-sort="healing"]').click();await wait(120);
@@ -212,7 +212,7 @@ try{
  check([...document.querySelectorAll('.combat-row[data-member="unknown"] .combat-stat strong,.combat-row[data-member="unknown"] .combat-stat small')].length===6&&[...document.querySelectorAll('.combat-row[data-member="unknown"] .combat-stat strong,.combat-row[data-member="unknown"] .combat-stat small')].every(el=>el.textContent==='—'),'Combat + : six valeurs inconnues, sans faux zéro');state.unknown=false;await settle(()=>!document.querySelector('.combat-row[data-member="unknown"]'));
  state.settings.manualParty=['Aster','Sève'];await settle(()=>document.querySelector('.combat-row[data-member="party:300"].departed'));
  check(document.querySelectorAll('.combat-row').length===4&&document.querySelector('.combat-row.departed').textContent.includes('Lumière'),'Combat + : participation de l’ancien membre conservée');state.settings.manualParty=null;await settle(()=>!document.querySelector('.combat-row.departed'));
- check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat + : quatre membres visibles à 400 × 340');
+ check(document.querySelector('.combat-list').lastElementChild.getBoundingClientRect().bottom<=document.querySelector('.combat-list').getBoundingClientRect().bottom,'Combat + : quatre membres visibles à 400 × 360');
  document.body.style.width='320px';
  check(document.querySelector('#mini-meter').scrollWidth<=document.querySelector('#mini-meter').clientWidth&&[...document.querySelectorAll('.combat-row')].every(row=>row.scrollWidth<=row.clientWidth),'Combat + : trois colonnes sans débordement à 320 pixels');
  check(localStorage.getItem('apm-layout')==='combat-all'&&!state.commands.slice(combinedBaseline).some(command=>/party_|capture_|new_combat|settings_save/.test(command)),'Combat + : préférence mémorisée sans modifier le moteur');

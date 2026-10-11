@@ -145,6 +145,7 @@ impl Pipeline {
             local_class:class_label(local.class.or_else(||id.and_then(|id|self.storage.actor_job(id)))),
             summons:self.storage.get_summon_data(), summon_ids:self.storage.get_summon_spawn_ids(), mobs, targets, bosses };
         self.engine.sync_identity(identity);
+        self.engine.sync_target_health(self.storage.target_health());
         if let Some(names)=&self.manual_party {
             let identities=self.storage.authoritative_names();
             let members=names.iter().map(|name|Member {key:format!("member:{name}"),name:name.clone(),

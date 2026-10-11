@@ -4,8 +4,9 @@ export interface Totals {damage:number;healing:number;healingReceived:number;dam
 export interface Skill {id:number;name:string;kind:string;periodic:boolean;amount:number;impacts:number;critical:number}
 export interface Point {second:number;damage:number;healing:number;damageReceived:number}
 export interface Row {member:Member;identityConfirmed?:boolean;totals:Totals;contribution:number;skills:Skill[];timeline:Point[]}
+export interface Target {id:number;name:string;currentHp?:number|null;maxHp?:number|null}
 export interface Snapshot {schemaVersion:number;id:string;startedAt:number|null;duration:number;active:boolean;endReason:string|null;
- members:Row[];totals:Totals;targets:{id:number;name:string}[];selectedTarget:number|null;warnings:string[]}
+ members:Row[];totals:Totals;targets:Target[];selectedTarget:number|null;trackedTarget?:number|null;warnings:string[]}
 export interface Diagnostics {mode:string;status:string;error:string|null;npcap:boolean;administrator:boolean;devices:string[];
  selectedDevice:string|null;connection:string|null;packets:number;parsed:number;duplicates:number;losses:number;recording:string|null;fixture:boolean}
 export interface Settings {opacity:number;alwaysOnTop:boolean;width:number;height:number;x:number|null;y:number|null;preferredDevice:string|null;manualParty:string[]|null;compact:boolean}
@@ -22,7 +23,9 @@ export function validateSnapshot(value:unknown):Snapshot {
  const totals = (t:Totals):boolean => !!t && ['damage','healing','healingReceived','damageReceived','deaths','dps','hps'].every(k=>number(t[k as keyof Totals]));
  if (!v || v.schemaVersion!==1 || typeof v.id!=='string' || !number(v.duration) || typeof v.active!=='boolean' ||
      !Array.isArray(v.members) || v.members.length>64 || !totals(v.totals) || !Array.isArray(v.targets) || !Array.isArray(v.warnings) ||
-     !v.warnings.every(w=>typeof w==='string') || !v.targets.every(t=>number(t.id)&&typeof t.name==='string') ||
+     !v.warnings.every(w=>typeof w==='string') || !v.targets.every(t=>number(t.id)&&typeof t.name==='string'&&
+       (t.currentHp==null||number(t.currentHp))&&(t.maxHp==null||(number(t.maxHp)&&t.maxHp>0))) ||
+     !(v.trackedTarget==null||number(v.trackedTarget)) ||
      !v.members.every(r=>r?.member && typeof r.member.key==='string' && typeof r.member.name==='string' && typeof r.member.class==='string' &&
        typeof r.member.present==='boolean' && typeof r.member.local==='boolean' && (r.identityConfirmed===undefined||typeof r.identityConfirmed==='boolean') && totals(r.totals) && number(r.contribution) &&
        Array.isArray(r.skills) && r.skills.every(s=>number(s.id)&&typeof s.name==='string'&&typeof s.kind==='string'&&typeof s.periodic==='boolean'&&number(s.amount)&&number(s.impacts)&&number(s.critical)) &&

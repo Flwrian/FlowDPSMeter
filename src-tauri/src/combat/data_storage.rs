@@ -386,6 +386,8 @@ struct Inner {
     heal_storage: HashMap<i32, HashMap<(i32, bool), HealSkillData>>,
     /// Spawn-time / observed-peak MAX HP per entity (denominator for the HP bar).
     mob_hp_data: HashMap<i32, i32>,
+    /// Maximum explicitly reported by the protocol, never the observed peak.
+    reported_max_hp: HashMap<i32, i32>,
     /// Live CURRENT HP per entity, from the in-place `8D <id> 02 01 00 <u32>` feed.
     mob_current_hp: HashMap<i32, i32>,
     known_player_ids: HashSet<i32>,
@@ -535,6 +537,7 @@ impl DataStorage {
                 mob_storage: HashMap::new(),
                 heal_storage: HashMap::new(),
                 mob_hp_data: HashMap::new(),
+                reported_max_hp: HashMap::new(),
                 mob_current_hp: HashMap::new(),
                 known_player_ids: HashSet::new(),
                 authoritative_name_ids: HashSet::new(),
@@ -1056,6 +1059,9 @@ impl DataStorage {
     pub fn append_mob(&self, mid: i32, code: i32) {
         let mut inner = self.inner.write();
         inner.mob_storage.insert(mid, code);
+        inner.dead_entity_ids.remove(&mid);
+        inner.mob_current_hp.remove(&mid);
+        inner.reported_max_hp.remove(&mid);
         // A spawn names the NPC: the table says what it is from here on.
         inner.hp_floored_ids.remove(&mid);
         inner.hp_reset_dummy_ids.remove(&mid);
@@ -1076,7 +1082,9 @@ impl DataStorage {
 
     pub fn append_mob_hp(&self, mid: i32, hp: i32) {
         if hp > 0 {
-            self.inner.write().mob_hp_data.insert(mid, hp);
+            let mut inner = self.inner.write();
+            inner.mob_hp_data.insert(mid, hp);
+            inner.reported_max_hp.insert(mid, hp);
         }
     }
 
@@ -1087,6 +1095,7 @@ impl DataStorage {
         }));
         let mut inner = self.inner.write();
         inner.dead_entity_ids.insert(entity_id);
+        inner.mob_current_hp.insert(entity_id, 0);
         inner.hp_floored_ids.remove(&entity_id);
     }
 
@@ -1481,6 +1490,16 @@ impl DataStorage {
         self.inner.read().hp_reset_dummy_ids.contains(&id)
     }
 
+    /// Latest protocol readings. Missing fields remain unknown, including max HP
+    /// when capture started after spawn. Death is an explicit zero reading.
+    pub fn target_health(&self) -> HashMap<i32, crate::party::TargetHealth> {
+        let inner = self.inner.read();
+        inner.reported_max_hp.keys().chain(inner.mob_current_hp.keys()).map(|id| (*id, crate::party::TargetHealth {
+            current_hp: if inner.dead_entity_ids.contains(id) {Some(0)} else {inner.mob_current_hp.get(id).map(|hp| i64::from(*hp))},
+            max_hp: inner.reported_max_hp.get(id).map(|hp| i64::from(*hp)),
+        })).collect()
+    }
+
     pub fn get_mob_current_hp(&self, id: i32) -> Option<i32> {
         self.inner.read().mob_current_hp.get(&id).copied()
     }
@@ -1581,6 +1600,7 @@ impl DataStorage {
         inner.dead_entity_ids.clear();
         inner.has_boss_in_segment = false;
         inner.mob_hp_data.clear();
+        inner.reported_max_hp.clear();
         inner.mob_current_hp.clear();
         inner.hp_floored_ids.clear();
         inner.hp_reset_dummy_ids.clear();
@@ -1600,6 +1620,7 @@ impl DataStorage {
         inner.dead_entity_ids.clear();
         inner.has_boss_in_segment = false;
         inner.mob_hp_data.clear();
+        inner.reported_max_hp.clear();
         inner.mob_current_hp.clear();
         inner.hp_floored_ids.clear();
         inner.hp_reset_dummy_ids.clear();

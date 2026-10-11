@@ -198,3 +198,10 @@ Capture, détection automatique, attribution des invocations et calcul des stati
 Dans Combat, le nombre principal à droite est le total observé ; le DPS ou HPS apparaît en dessous. Dans Combat +, chaque membre conserve ses trois colonnes : total des dégâts, total des soins et total des dégâts reçus (Tank). Le résumé Total groupe suit la même présentation. Les valeurs sous un million sont affichées précisément ; au-delà, passe la souris pour lire le montant exact.
 
 Pour installer, extraire tout le pack Windows 0.1.12 et ouvrir DEMARRER.exe. Pour une installation précédente, ouvrir son DEMARRER.exe et accepter la mise à jour proposée. Fermer le meter lorsque le lanceur le demande ; le groupe en jeu peut rester formé. Historique et réglages sont conservés.
+## Version 0.1.13 — PV de la cible
+
+La ligne de vie affiche **PV actuels / PV max**, avec le pourcentage et une barre discrète. Elle est visible dans Combat, Combat +, Bandeau, Cartes, 3 panneaux et la vue développée. Choisir une cible dans le filtre affiche ses PV. Avec Toutes les cibles, les PV suivent la dernière cible attaquée par le groupe ; les dégâts continuent à inclure toutes les cibles.
+
+Les chiffres sont les dernières valeurs reçues du jeu. Un tiret signifie que la valeur manque. Le maximum observé pendant la capture n’est pas utilisé comme maximum réel ; aucune soustraction des dégâts du groupe n’est utilisée pour estimer les PV. Le pourcentage et la barre ne sont renseignés que si les deux valeurs sont cohérentes. Les nouveaux rapports JSON et l’historique conservent les PV en fin de combat ; les anciens rapports restent lisibles.
+
+Pour tester la version locale, fermer le meter précédent puis ouvrir le DEMARRER.exe du dossier AionPartyMeter-0.1.13. Le groupe en jeu peut rester formé. Si la capture a démarré après l’apparition d’un monstre, les PV max peuvent rester inconnus jusqu’à un message du jeu qui les indique.
